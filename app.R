@@ -125,7 +125,8 @@ FreqPlot <-
       ) %>% 
       layout(barmode = 'stack',
              hovermode = 'x',
-             yaxis = list(title = '<b>Detection Frequency (%)</b>'),
+             yaxis = list(title = '<b>Detection Frequency (%)</b>',
+                          range = c(0,100)),
              xaxis = list(title = '',
                           tickvals= ~Analyte,
                           ticktext= ~Analyte,
@@ -1006,7 +1007,7 @@ $("#detectionMap").height(400);
     validate(
       need(max(tab1Data1()$Per50_, na.rm = TRUE) > 0, "No detections above 50% of benchmark")
     )
-    tab1Data2 <- tab1Data1()[order(tab1Data1()$Per50_, decreasing = TRUE),]
+    tab1Data2 <- tab1Data1()[order(tab1Data1()$Per50_, decreasing = TRUE),] %>% filter(Per50_ > 0)
     p <- plot_ly(tab1Data2) %>% 
       add_bars(x = ~Analyte,
                y = ~Per50_100,
@@ -1022,7 +1023,8 @@ $("#detectionMap").height(400);
       layout(title = paste0("<b>Detection Frequency over 50% of Benchmark: ", input$Basin, " ", input$Year[1], "-", input$Year[2], "</b>"),
              barmode = 'stack',
              hovermode = 'x',
-             yaxis = list(title = '<b>Detection Frequency</b>'),
+             yaxis = list(title = '<b>Detection Frequency</b>',
+                          range = c(0, ifelse(max(tab1Data2$Per50_, na.rm = TRUE) > 50, 100, max(tab1Data2$Per50_, na.rm = TRUE)*2))),
              xaxis = list(title = '',
                           tickvals= ~Analyte,
                           ticktext= ~Analyte,
@@ -1233,7 +1235,8 @@ $("#detectionMap").height(400);
         margin = list(t=100),
         barmode = 'stack',
         hovermode = 'x',
-        yaxis = list(title = '<b>Detection Frequency</b>'),
+        yaxis = list(title = '<b>Detection Frequency</b>',
+                     range = c(0,100)),
         xaxis = list(title = '',
                      tickvals= ~Year,
                      ticktext= ~Year)
