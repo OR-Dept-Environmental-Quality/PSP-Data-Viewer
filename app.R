@@ -26,6 +26,7 @@ library(stringr)
 library(webshot)
 library(htmltools)
 library(htmlwidgets)
+library(shinyalert)
 
 source("appData/Credentials.R")
 
@@ -208,6 +209,7 @@ fluidPage(
                      href="http://www.oregon.gov/ODA/programs/Pesticides/Water/Pages/PesticideStewardship.aspx", target="_blank")
                ), id = "navTab",
              tabPanel(icon=icon("bar-chart"), "Data Summaries", value = "dataSum",
+                      # Popup to suggest user guide and references
                       modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! If you are new to this tool, check out the User Guide by clicking on the ", img(src = "UserGuide.PNG"), " link in the Navigation Bar at the top of the window.",
                                          br(),br(),
                                          "You can find definitions, analyte descriptions and more in the ", img(src = "References.PNG"), " tab."),
@@ -408,6 +410,7 @@ fluidPage(
 
 #### ui input ####
 ui <- tagList(useShinyjs(),
+              useShinyalert(),
               uiOutput("page"),
               uiOutput("modals"),
               # uiOutput("color"),
@@ -742,7 +745,13 @@ $("#detectionMap").height(400);
   }, 
   {if(input$Tab != "detectionMap" | input$navTab != "dataSum") ({
     hideElement("popup")
-  }) else{showElement("popup")}
+  }) else{
+    showElement("popup")
+    removeModal()
+    shinyalert(title = 'Important info about the Detection Map',
+               text = "THIS IS A DISCLAIMER EXPLAINING THE PROPER USE AND INTENTION OF THE DETECTION MAP" ,
+               type = 'info', closeOnEsc = TRUE, showConfirmButton = TRUE, html = TRUE)
+    }
   })
   
   output$popup <- renderUI(absolutePanel(top = 300, right = 70, width = 250, height = 100, draggable = TRUE, uiOutput("cdlPop")))
