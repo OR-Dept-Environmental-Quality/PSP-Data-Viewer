@@ -210,9 +210,15 @@ fluidPage(
                ), id = "navTab",
              tabPanel(icon=icon("bar-chart"), "Data Summaries", value = "dataSum",
                       # Popup to suggest user guide and references
-                      modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! If you are new to this tool, check out the User Guide by clicking on the ", img(src = "UserGuide.PNG"), " link in the Navigation Bar at the top of the window.",
+                      modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! If you are new to this tool, check out the User Guide by clicking on the ",
+                                         img(src = "UserGuide.PNG"), " link in the Navigation Bar at the top of the window.",
                                          br(),br(),
-                                         "You can find definitions, analyte descriptions and more in the ", img(src = "References.PNG"), " tab."),
+                                         "You can find definitions, analyte descriptions and more in the ", img(src = "References.PNG"), " tab.",
+                                         br(),br(),
+                                         em(HTML("<center>"),"Please Note",HTML("<br>"),"This data viewer was developed to support Oregon's Pesticide Stewardship Partnership program, 
+                                            a voluntary program aimed to identify water quality issues related to pesticides, share monitoring results, 
+                                            implement solutions, and measure success. This data viewer provides access to information supporting this program and 
+                                            is not intended to be a comprehensive source of information about pesticide distribution in state waters.",HTML("</center>"))),
                                   footer = modalButton("Dismiss"), fade = TRUE, easyClose = TRUE),
                       #### Sidebar code for parameter selection for all tabs ####
                       sidebarLayout(
@@ -748,8 +754,8 @@ $("#detectionMap").height(400);
   }) else{
     showElement("popup")
     removeModal()
-    shinyalert(title = 'Important info about the Detection Map',
-               text = "THIS IS A DISCLAIMER EXPLAINING THE PROPER USE AND INTENTION OF THE DETECTION MAP" ,
+    shinyalert(title = 'Important info about the Detection Map Crop Data Layer',
+               text = "This layer shows estimated crop distribution information on a national scale and is not intended to show information specific to individual plots. The mapped information will improve over time as additional surveys become available. This map is not intended for use in identifying specific crops or land uses at this time." ,
                type = 'info', closeOnEsc = TRUE, showConfirmButton = TRUE, html = TRUE)
     }
   })

@@ -50,14 +50,21 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData) {
   map <- leaflet() %>%
     addProviderTiles(providers$OpenStreetMap, group = "Street") %>% 
     addProviderTiles(providers$Esri.WorldImagery, group = "World Imagery") %>%
-    addWMSTiles('https://www.mrlc.gov/arcgis/services/LandCover/USGS_EROS_LandCover_NLCD/MapServer/WMSServer?',
+    # addWMSTiles('https://www.mrlc.gov/arcgis/services/LandCover/USGS_EROS_LandCover_NLCD/MapServer/WMSServer?',
+    #             group = "Land Use (NLCD 2011) *Colors do not <br>
+    #                                    represent detections (see legend above map)",
+    #             layers = '33',
+    #             options = WMSTileOptions(format = 'image/png',
+    #                                      version = '1.3.0',
+    #                                      transparent = TRUE)
+    # ) %>%
+    addWMSTiles(baseUrl = 'https://smallscale.nationalmap.gov/arcgis/services/LandCover/MapServer/WMSServer?',
                 group = "Land Use (NLCD 2011) *Colors do not <br>
                                        represent detections (see legend above map)",
-                layers = '33',
-                options = WMSTileOptions(format = 'image/png',
-                                         version = '1.3.0',
-                                         transparent = TRUE)
-    ) %>%
+                layers = "1",
+                options = WMSTileOptions(version = '1.3.0',
+                                         format = 'image/png',
+                                         transparent = TRUE)) %>% 
     addWMSTiles("https://nassgeodata.gmu.edu/CropScapeService/wms_cdlall.cgi?",
                 group = "Crops (CDL 2017)",
                 layers = "cdl_2017",
