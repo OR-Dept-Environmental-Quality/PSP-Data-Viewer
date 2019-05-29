@@ -58,10 +58,10 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData) {
     #                                      version = '1.3.0',
     #                                      transparent = TRUE)
     # ) %>%
-    addWMSTiles(baseUrl = 'https://smallscale.nationalmap.gov/arcgis/services/LandCover/MapServer/WMSServer?',
-                group = "Land Use (NLCD 2011) *Colors do not <br>
+    addWMSTiles(baseUrl = 'https://www.mrlc.gov/geoserver/mrlc_display/NLCD_2016_Land_Cover_L48/wms?',
+                group = "Land Use (NLCD 2016) *Colors do not <br>
                                        represent detections (see legend above map)",
-                layers = "1",
+                layers = "NLCD_2016_Land_Cover_L48",
                 options = WMSTileOptions(version = '1.3.0',
                                          format = 'image/png',
                                          transparent = TRUE)) %>% 
@@ -146,12 +146,12 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData) {
     # ) %>% 
     addFullscreenControl(position='topright') %>% 
     # addSearchFeatures(targetGroups = 'Stations') %>% 
-    addLayersControl(overlayGroups = c('Stations', 'Detections', 'Basins', "Land Use (NLCD 2011) *Colors do not <br>
+    addLayersControl(overlayGroups = c('Stations', 'Detections', 'Basins', "Land Use (NLCD 2016) *Colors do not <br>
                                        represent detections (see legend above map)", "Crops (CDL 2017)", "Streams (NHD)", "Hydrography"),
                      baseGroups = c("Street", "World Imagery"),
                      position = 'bottomleft'
     ) %>%
-    hideGroup(group = c('Stations', 'Land Use (NLCD 2011) *Colors do not <br>
+    hideGroup(group = c('Stations', 'Land Use (NLCD 2016) *Colors do not <br>
                                        represent detections (see legend above map)', 'Crops (CDL 2017)', 'Streams (NHD)', "Hydrography"))
   map
   
