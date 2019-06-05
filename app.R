@@ -15,7 +15,6 @@ library(ggplot2)
 library(plotly)
 library(reshape2)
 library(tidyr)
-library(compiler)
 library(shinythemes)
 library(shinydashboard)
 library(shinyBS)
@@ -65,111 +64,14 @@ AllData_NoVoid$AboveBench <- ifelse(AllData_NoVoid$AQL_Ratio > 1, 1, ifelse(is.n
 Vars <- as.character(colnames(AllData_NoVoid)) #Store all variable names in the main dataset
 AllData_NoVoid$Sampling_Date <- as.Date(AllData_NoVoid$Sampling_Date, "%Y-%m-%d") #Change format of date in main dataset
 
-#### Function for standard detection frequency plot (stacked bars with %ALR) ####
-
-FreqPlot <-
-  cmpfun(function(data, xlab, orderVar){
-    data2 <- data[order(orderVar),]
-    plot <- plot_ly(data2) %>% 
-      add_bars(
-        x = ~Analyte,
-        y = ~Per_10,
-        name = '<10% of benchmark',
-        width = 0.75,
-        hoverinfo = "text",
-        hovertext = paste0(format(round(data2$Per_10, 2), nsmall = 2), " - <b><10% of benchmark"),
-        color = I('#99CCCC')
-      ) %>% 
-      add_trace(type = 'bar',
-                x = ~Analyte,
-                y = ~Per10_50,
-                name = '10-50%',
-                width = 0.75,
-                hoverinfo = "text",
-                hovertext = paste0(format(round(data2$Per10_50, 2), nsmall = 2), " - <b>10-50%"),
-                color = I('#336699')
-      ) %>%
-      add_trace(type = 'bar',
-                x = ~Analyte,
-                y = ~Per50_100,
-                name = '50-100%',
-                width = 0.75,
-                hoverinfo = "text",
-                hovertext = paste0(format(round(data2$Per50_100, 2), nsmall = 2), " - <b>50-100%"),
-                color = I('#FF9900')
-      ) %>%
-      add_trace(type = 'bar',
-                x = ~Analyte,
-                y = ~Per100_,
-                name = 'Over benchmark',
-                width = 0.75,
-                hoverinfo = "text",
-                hovertext = paste0(format(round(data2$Per100_, 2), nsmall = 2), " - <b>Over benchmark"),
-                color = I('#b30000')
-      ) %>%
-      add_trace(type = 'bar',
-                x = ~Analyte,
-                y = ~NoBench,
-                name = 'No benchmark',
-                width = 0.75,
-                hoverinfo = "text",
-                hovertext = paste0(format(round(data2$NoBench, 2), nsmall = 2), " - <b>No benchmark<br>"),
-                color = I('grey')
-      ) %>%
-      add_trace(type = 'bar',
-                x = ~Analyte,
-                y = 0,
-                name = "# of Samples",
-                showlegend = FALSE,
-                hoverinfo = 'text',
-                hovertext = paste0("<b># of Samples: </b>", data2$NSamples)
-      ) %>% 
-      layout(barmode = 'stack',
-             hovermode = 'x',
-             yaxis = list(title = '<b>Detection Frequency (%)</b>',
-                          range = c(0,100)),
-             xaxis = list(title = '',
-                          tickvals= ~Analyte,
-                          ticktext= ~Analyte,
-                          tickangle= -45),
-             margin = list(b = 180)
-      )
-    return(plot)
-  }
-)
-
-#### Function to add custom configuration to plots ####
-plotConfig <- function(p){
-  layout(p, 
-         titlefont = list(size=16),
-         xaxis = list(titlefont=list(size=14),
-                      tickfont=list(size=13)),
-         yaxis = list(titlefont=list(size=14),
-                      tickfont=list(size=12)),
-         legend = list(font=list(size=14))) %>% 
-    plotly::config(displayModeBar='hover', editable=TRUE, showTips=TRUE, showAxisDragHandles=TRUE, showAxisRangeEntryBoxes=TRUE,
-           collaborate=FALSE, displaylogo=FALSE)
-}
-
-#### Function for Navbar with text elements ####
-navbarPageWithText <- function(..., text) {
-  navbar <- navbarPage(...)
-  textEl <- tags$p(class = "navbar-text", text)
-  navbar[[3]][[1]]$children[[1]] <- htmltools::tagAppendChild(
-    navbar[[3]][[1]]$children[[1]], textEl)
-  navbar
-}
-#### Function to add download button to map ####
-
-registerPlugin <- function(map, plugin) {
-  map$dependencies <- c(map$dependencies, list(plugin))
-  map
-}
-
 easyPrintPlugin <- htmlDependency(name = "leaflet-easyprint",
                                   version = "2.2.1",
                                   src = c(file = "www/Leaflet.EasyPrint/dist"),
                                   script = "bundle.js")
+
+# Source functions for app
+
+source("appData/app_functions.R")
 
 #### Create User Interface with tabs, panels, inputs, etc) ####
 
@@ -191,7 +93,8 @@ ui1 <- function(){
     h5(HTML("<i>If you experience performance issues while using Internet Explorer, try using an alternate browser</i>"))
     # )
   )
-  }
+}
+
 ui2 <- function(){
 fluidPage(
     theme = shinytheme("flatly"),
@@ -423,11 +326,11 @@ ui <- tagList(useShinyjs(),
               uiOutput("panels"),
               uiOutput("popup"))
               
-
 #### Where all of the computation happens (in relation to inputs) ####
 
 server <- function(input, output, session) {
   
+  #### Code for password authentication ####
   output$page <- renderUI(ui1())
   output$tryAgain <- renderText("")
   passcode <- reactive({
@@ -439,28 +342,6 @@ server <- function(input, output, session) {
     if(input$Password == passw0rd){
       output$page <- renderUI(ui2())
     } else{output$tryAgain <- renderText("Incorrect Password")}
-  })
-  
-  # Create function to resize map on button click
-  observeEvent(input$expand, {
-    output$modals <- renderUI({
-      tags$script(
-        '$(window).on("resize", function() {
-$("#detectionMap").height($(window).height()-20);
-}).trigger("resize");')
-    })
-    hideElement(id = 'expand')
-    showElement(id = 'collapse')
-  }, ignoreNULL = TRUE, ignoreInit = TRUE)
-  observeEvent(input$collapse, {
-    output$modals <- renderUI({
-      tags$script(
-        '$(window).on("resize", function() {
-$("#detectionMap").height(400);
-}).trigger("resize");')
-      })
-    showElement(id = 'expand')
-    hideElement(id = 'collapse')
   })
   
   # Show or hide sidebar on button click
@@ -525,10 +406,11 @@ $("#detectionMap").height(400);
     updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
   }), ignoreInit = TRUE)
   
-  #### Format data for 'All Analytes' tab ####
+  #### All Analytes tab ####
   
   output$tab1Title <- renderText(paste0(BasinName(), " ", input$Year[1], "-", input$Year[2]))
   
+  ### Format data ###
   tab1Data <- reactive({
     t <- AllData_SumBy_Basin %>% 
       dplyr::group_by(Analyte) %>%
@@ -558,15 +440,121 @@ $("#detectionMap").height(400);
       print("Detects on")
       return(dplyr::filter(tab1Data(),
                     NDetects > 0))
-    }
-    else{
+    } else {
       print("Detects off")
       return(tab1Data())
     }
   })
   
-  #### Format data for 'Analyte per Year' tab ####
+  ### Create plots for 'All Analytes' ###
   
+  output$plot1 <- renderPlotly({
+    shiny::validate(
+      need(max(tab1Data1()$DetectionFreq) > 0, "No Detections")
+    )
+    p <- FreqPlot(tab1Data1(), tab1Data1()$Analyte, -tab1Data1()$DetectionFreq) %>% 
+      layout(title = paste("<b>Detection Frequency: ", input$Basin, " ", input$Year[1], "-", input$Year[2], "</b>"),
+             xaxis = list(title="<b>Analyte</b>",
+                          tickangle = -45),
+             yaxis = list(side = "left", title = "<b>Detection Frequency (%)</b>", showline = TRUE,
+                          ticks = "outside"),
+             margin = list(r = 80,
+                           l = 130,
+                           t = 60
+                           # , b = 180
+             )) %>%  plotConfig()
+    p$x$config$modeBarButtonsToAdd[1] <- toImage2
+    p
+  })
+  
+  output$plot2 <- renderPlotly({
+    validate(
+      need(max(tab1Data1()$Per50_, na.rm = TRUE) > 0, "No detections above 50% of benchmark")
+    )
+    tab1Data2 <- tab1Data1()[order(tab1Data1()$Per50_, decreasing = TRUE),] %>% filter(Per50_ > 0)
+    p <- plot_ly(tab1Data2) %>% 
+      add_bars(x = ~Analyte,
+               y = ~Per50_100,
+               name = "50-100%",
+               width = 0.75,
+               color = I('#FF9900')) %>% 
+      add_trace(type = 'bar',
+                x = ~Analyte,
+                y = ~Per100_,
+                name = "Over Benchmark",
+                width = 0.75,
+                color = I('#b30000')) %>% 
+      layout(title = paste0("<b>Detection Frequency over 50% of Benchmark: ", input$Basin, " ", input$Year[1], "-", input$Year[2], "</b>"),
+             barmode = 'stack',
+             hovermode = 'x',
+             yaxis = list(title = '<b>Detection Frequency</b>',
+                          range = c(0, ifelse(max(tab1Data2$Per50_, na.rm = TRUE) > 50, 100, max(tab1Data2$Per50_, na.rm = TRUE)*2))),
+             xaxis = list(title = '',
+                          tickvals= ~Analyte,
+                          ticktext= ~Analyte,
+                          tickangle= -45),
+             margin = list(t = 100,
+                           b = 180,
+                           l = 130)) %>% plotConfig()
+    p$x$config$modeBarButtonsToAdd[1] <- toImage2
+    p
+  })
+  
+  output$plotALR <- renderPlotly({
+    p <- plot_ly(tab1Data1()) %>% 
+      add_trace(type = "bar", 
+                x= ~Analyte, 
+                y= ~AQL_Ratio, 
+                name = "<b>ALR</b>",
+                marker = list(color= "#990000")
+      ) %>% 
+      add_trace(type = "scatter",
+                mode = "lines",
+                line = list(color = "#000000"),
+                x= ~Analyte, 
+                y= ~ALR_1, 
+                name = "<b>ALR = 1</b>"
+      ) %>% 
+      add_trace(type = "scatter", 
+                mode = "markers",
+                marker = list(color= "#0000CC", symbol= "diamond"),
+                x= ~Analyte, 
+                y= ~DetectionFreq, 
+                name = "<b>Detection Frequency</b>", 
+                yaxis= "y2") %>% 
+      layout(
+        title = paste("<b>Aquatic Life Ratio Detection Frequency: ", input$Basin, "Basin <br>", input$Year[1], '-', input$Year[2], "</b>"),
+        xaxis = list(title="<b>Analyte</b>",
+                     categoryorder = "array",
+                     categoryarray = tab1Data1()[order(tab1Data1()$AQL_Ratio, decreasing = TRUE),]$Analyte,
+                     tickangle = -45),
+        yaxis = list(side = "left", title = "<b>Aquatic Life Ratio</b>", showline = TRUE,
+                     ticks = "outside"),
+        yaxis2 = list(
+          position = 1,
+          range = c(0, 105),
+          side = "right", 
+          title = "<b>Detection Frequency</b>", 
+          overlaying = 'y',
+          showgrid = FALSE,
+          mirror = TRUE,
+          showline = TRUE,
+          ticks = "outside"),
+        hovermode = 'x',
+        legend = list(x = 0.25, y = 1.1, orientation = "h", tracegroupgap = 10),
+        margin = list(r = 80,
+                      l = 80,
+                      t = 100,
+                      b = 180,
+                      pad = 0)
+      ) %>% plotConfig()
+    p$x$config$modeBarButtonsToAdd[1] <- toImage2
+    p
+  })
+  
+  #### Analyte per Year tab ####
+  
+  ### Filter Data ###
   tab2DetFreqData <- reactive({
     AllData_NoVoid %>% filter(Project %in% Basin1(), Station_Description %in% Station3(),
                               Year >= input$Year[1], Year <= input$Year[2], Analyte %in% input$Analyte) %>% 
@@ -652,7 +640,7 @@ $("#detectionMap").height(400);
     } else {NULL}
   })
   
-  #### Format data for 'Station Summary' tab ####
+  #### Station Summary tab ####
   
   Analyte2 <- reactive({
     if('All' %in% input$Analyte2){PollutantNames}
@@ -721,7 +709,7 @@ $("#detectionMap").height(400);
       )
   })
   
-  #### Format data for 'Detection Map' and plot ####
+  #### Detection Map ####
   
   MapAnalyte <- reactive(
     if(input$Analyte4 == "All"){
@@ -731,6 +719,8 @@ $("#detectionMap").height(400);
       MapAnalyte <- input$Analyte4
     }
   )
+  
+  # Format data for 'Detection Map' and plot
   
   mapData <- reactive({
     AllData_NoVoid %>%
@@ -742,53 +732,80 @@ $("#detectionMap").height(400);
              Analyte %in% MapAnalyte())
   })
   
-  #### Filter data and display plots based on the user clicking different markers/basins/detections ####
+  # Create detection map using function from BasinMapForApp.R
   
-  # Show Crop Data Layer info on detection map click
-  observeEvent({
-    input$Tab
-    input$navTab
-  }, 
-  {if(input$Tab != "detectionMap" | input$navTab != "dataSum") ({
-    hideElement("popup")
-  }) else{
-    showElement("popup")
-    removeModal()
-    shinyalert(title = 'Important info about the Detection Map Crop Data Layer',
-               text = "This layer shows estimated crop distribution information on a national scale and is not intended to show information specific to individual plots. The mapped information will improve over time as additional surveys become available. This map is not intended for use in identifying specific crops or land uses at this time." ,
-               type = 'info', closeOnEsc = TRUE, showConfirmButton = TRUE, html = TRUE)
+  observeEvent(input$opaqueBasins, {
+    if(input$opaqueBasins){
+      output$detectionMap <- renderLeaflet({
+        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect()) %>% 
+          addPolygons(data = bsnSelect(),
+                      group = 'Basins',
+                      stroke = TRUE,
+                      weight = 1,
+                      opacity = 1,
+                      fillOpacity = 1,
+                      smoothFactor = 0.5,
+                      fillColor = topo.colors(13, alpha = NULL),
+                      highlight = highlightOptions(
+                        weight = 5,
+                        color = "#666",
+                        # dashArray = "",
+                        fillOpacity = 0.7,
+                        bringToFront = FALSE),
+                      layerId = bsnSelect()@data$PSP_Name,
+                      label = bsnSelect()@data$PSP_Name,
+                      labelOptions = labelOptions(
+                        style = list("font-weight" = "normal", padding = "3px 8px"),
+                        textsize = "15px",
+                        direction = "auto")) %>% registerPlugin(easyPrintPlugin) %>%
+          onRender(jsCode = "function(el, x) {
+              L.easyPrint({
+                  title: 'Download Map (CDL layer not available for download)',
+                  position: 'topleft',
+                  sizeModes: ['Current'],
+                  exportOnly: true,
+                  filename: 'map',
+              }).addTo(this);}")
+      }) 
+    } else {
+      output$detectionMap <- renderLeaflet({
+        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect()) %>% registerPlugin(easyPrintPlugin) %>% onRender(
+          jsCode = "function(el, x) {
+              L.easyPrint({
+                  title: 'Download Map (CDL layer not available for download)',
+                  position: 'topleft',
+                  sizeModes: ['Current'],
+                  exportOnly: true,
+                  filename: 'map',
+              }).addTo(this);}")
+      })
     }
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+  
+  # Resize map on button click
+  
+  observeEvent(input$expand, {
+    output$modals <- renderUI({
+      tags$script(
+        '$(window).on("resize", function() {
+$("#detectionMap").height($(window).height()-20);
+}).trigger("resize");')
+    })
+    hideElement(id = 'expand')
+    showElement(id = 'collapse')
+  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+  observeEvent(input$collapse, {
+    output$modals <- renderUI({
+      tags$script(
+        '$(window).on("resize", function() {
+$("#detectionMap").height(400);
+}).trigger("resize");')
+    })
+    showElement(id = 'expand')
+    hideElement(id = 'collapse')
   })
   
-  output$popup <- renderUI(absolutePanel(top = 300, right = 70, width = 250, height = 100, draggable = TRUE, uiOutput("cdlPop")))
-  
-  httr::set_config(httr::config( ssl_verifypeer = 0L ) )
-  
-  # Add functions for showing detection data on click for various layers
-  observeEvent(input$detectionMap_click,{
-    showElement(id="cdlTable")
-    pnt <- reactive(LongLatToUTM(input$detectionMap_click$lng,input$detectionMap_click$lat))
-    cdlData <- reactive(as.character(xmlTreeParse(content(GET("http://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLValue?",
-                                                     query=list(year=2017,
-                                                                x=pnt()$X,
-                                                                y=pnt()$Y))))$doc$children$GetCDLValueResponse[1]$Result[1]$text)[6])
-    cdlCat <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][4],'".*"'))[1])
-    cdlCol <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][5],'".*"'))[1])
-    output$cdlTable <- renderTable(data.frame(CDL.Category = cdlCat(),
-                                             Color.Value = cdlCol(),
-                                             Map.Layer = "Crops (CDL 2017)"))
-    output$cdlPanel <- renderText(paste('<span style="font-weight: normal;">', cdlCat(), '</span>'))
-    # output$color <- renderUI(tags$style(type = "text/css",
-    #                                     paste("#cdlTable {border-style: solid;
-    #                                           border-color: ", cdlCol(), ";
-    #                                           border-width: 8px; width: 600px; height: 80px;}"))
-    #                          )
-    output$cdlPop <- renderUI(div(style=paste("border-style: solid; border-color:", cdlCol(), "; text-align: center; font-weight: bold;
-                                                         border-width: 8px; background-color: #FFFFFF; border-radius: 25px; z-index: 1001; position: relative;"),
-                                  "CDL 2017 Crop Category",
-                                  htmlOutput("cdlPanel")))
-
-  })
+  # Filter data and display plots based on the user clicking different markers/basins/detections ####
   
   observeEvent(input$detectionMap_marker_click,{
     bsnID <- reactive({NULL})
@@ -924,60 +941,55 @@ $("#detectionMap").height(400);
     })
   }, ignoreNULL = TRUE, ignoreInit = TRUE)
   
-  # # Create map for sidebar
-  # output$mymap <- renderLeaflet({
-  #   basinMap
-  # })
+  # Crop Data Layer info popup ####
   
-  # Create detection map using function from BasinMapForApp.R
-
-  observeEvent(input$opaqueBasins, {
-      if(input$opaqueBasins){
-      output$detectionMap <- renderLeaflet({
-        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect()) %>% 
-          addPolygons(data = bsnSelect(),
-                      group = 'Basins',
-                      stroke = TRUE,
-                      weight = 1,
-                      opacity = 1,
-                      fillOpacity = 1,
-                      smoothFactor = 0.5,
-                      fillColor = topo.colors(13, alpha = NULL),
-                      highlight = highlightOptions(
-                        weight = 5,
-                        color = "#666",
-                        # dashArray = "",
-                        fillOpacity = 0.7,
-                        bringToFront = FALSE),
-                      layerId = bsnSelect()@data$PSP_Name,
-                      label = bsnSelect()@data$PSP_Name,
-                      labelOptions = labelOptions(
-                        style = list("font-weight" = "normal", padding = "3px 8px"),
-                        textsize = "15px",
-                        direction = "auto")) %>% registerPlugin(easyPrintPlugin) %>%
-          onRender(jsCode = "function(el, x) {
-              L.easyPrint({
-                  title: 'Download Map (CDL layer not available for download)',
-                  position: 'topleft',
-                  sizeModes: ['Current'],
-                  exportOnly: true,
-                  filename: 'map',
-              }).addTo(this);}")
-      }) 
-    } else {
-      output$detectionMap <- renderLeaflet({
-        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect()) %>% registerPlugin(easyPrintPlugin) %>% onRender(
-          jsCode = "function(el, x) {
-              L.easyPrint({
-                  title: 'Download Map (CDL layer not available for download)',
-                  position: 'topleft',
-                  sizeModes: ['Current'],
-                  exportOnly: true,
-                  filename: 'map',
-              }).addTo(this);}")
-      })
-    }
-  }, ignoreNULL = TRUE, ignoreInit = TRUE)
+  observeEvent({
+    input$Tab
+    input$navTab
+  }, 
+  {if(input$Tab != "detectionMap" | input$navTab != "dataSum") ({
+    hideElement("popup")
+  }) else{
+    showElement("popup")
+    removeModal()
+    shinyalert(title = 'Important info about the Detection Map Crop Data Layer',
+               text = "This layer shows estimated crop distribution information on a national scale and is 
+               not intended to show information specific to individual plots. The mapped information will 
+               improve over time as additional surveys become available. This map is not intended for 
+               use in identifying specific crops or land uses at this time.",
+               type = 'info', closeOnEsc = TRUE, showConfirmButton = TRUE, html = TRUE)
+  }
+  })
+  
+  output$popup <- renderUI(absolutePanel(top = 300, right = 70, width = 250, height = 100, draggable = TRUE, uiOutput("cdlPop")))
+  
+  httr::set_config(httr::config( ssl_verifypeer = 0L ) )
+  
+  # Add functions for showing detection data on click for various layers
+  observeEvent(input$detectionMap_click,{
+    showElement(id="cdlTable")
+    pnt <- reactive(LongLatToUTM(input$detectionMap_click$lng,input$detectionMap_click$lat))
+    cdlData <- reactive(as.character(xmlTreeParse(content(GET("http://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLValue?",
+                                                              query=list(year=2017,
+                                                                         x=pnt()$X,
+                                                                         y=pnt()$Y))))$doc$children$GetCDLValueResponse[1]$Result[1]$text)[6])
+    cdlCat <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][4],'".*"'))[1])
+    cdlCol <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][5],'".*"'))[1])
+    output$cdlTable <- renderTable(data.frame(CDL.Category = cdlCat(),
+                                              Color.Value = cdlCol(),
+                                              Map.Layer = "Crops (CDL 2017)"))
+    output$cdlPanel <- renderText(paste('<span style="font-weight: normal;">', cdlCat(), '</span>'))
+    # output$color <- renderUI(tags$style(type = "text/css",
+    #                                     paste("#cdlTable {border-style: solid;
+    #                                           border-color: ", cdlCol(), ";
+    #                                           border-width: 8px; width: 600px; height: 80px;}"))
+    #                          )
+    output$cdlPop <- renderUI(div(style=paste("border-style: solid; border-color:", cdlCol(), "; text-align: center; font-weight: bold;
+                                                         border-width: 8px; background-color: #FFFFFF; border-radius: 25px; z-index: 1001; position: relative;"),
+                                  "CDL 2017 Crop Category",
+                                  htmlOutput("cdlPanel")))
+    
+  })
   
   #### Data for 'Reference' tab ####
   
@@ -996,112 +1008,6 @@ $("#detectionMap").height(400);
   output$ingDescriptions <- renderDataTable(
     IngredientDescriptions
   )
-  
-  #### Create plots for 'All Analytes' ####
-  
-  output$plot1 <- renderPlotly({
-    shiny::validate(
-      need(max(tab1Data1()$DetectionFreq) > 0, "No Detections")
-    )
-    p <- FreqPlot(tab1Data1(), tab1Data1()$Analyte, -tab1Data1()$DetectionFreq) %>% 
-      layout(title = paste("<b>Detection Frequency: ", input$Basin, " ", input$Year[1], "-", input$Year[2], "</b>"),
-             xaxis = list(title="<b>Analyte</b>",
-                          tickangle = -45),
-             yaxis = list(side = "left", title = "<b>Detection Frequency (%)</b>", showline = TRUE,
-                          ticks = "outside"),
-             margin = list(r = 80,
-                           l = 130,
-                           t = 60
-                           # , b = 180
-             )) %>%  plotConfig()
-    p$x$config$modeBarButtonsToAdd[1] <- toImage2
-    p
-  })
-  
-  output$plot2 <- renderPlotly({
-    validate(
-      need(max(tab1Data1()$Per50_, na.rm = TRUE) > 0, "No detections above 50% of benchmark")
-    )
-    tab1Data2 <- tab1Data1()[order(tab1Data1()$Per50_, decreasing = TRUE),] %>% filter(Per50_ > 0)
-    p <- plot_ly(tab1Data2) %>% 
-      add_bars(x = ~Analyte,
-               y = ~Per50_100,
-               name = "50-100%",
-               width = 0.75,
-               color = I('#FF9900')) %>% 
-      add_trace(type = 'bar',
-                x = ~Analyte,
-                y = ~Per100_,
-                name = "Over Benchmark",
-                width = 0.75,
-                color = I('#b30000')) %>% 
-      layout(title = paste0("<b>Detection Frequency over 50% of Benchmark: ", input$Basin, " ", input$Year[1], "-", input$Year[2], "</b>"),
-             barmode = 'stack',
-             hovermode = 'x',
-             yaxis = list(title = '<b>Detection Frequency</b>',
-                          range = c(0, ifelse(max(tab1Data2$Per50_, na.rm = TRUE) > 50, 100, max(tab1Data2$Per50_, na.rm = TRUE)*2))),
-             xaxis = list(title = '',
-                          tickvals= ~Analyte,
-                          ticktext= ~Analyte,
-                          tickangle= -45),
-             margin = list(t = 100,
-                           b = 180,
-                           l = 130)) %>% plotConfig()
-    p$x$config$modeBarButtonsToAdd[1] <- toImage2
-    p
-  })
-  
-  output$plotALR <- renderPlotly({
-    p <- plot_ly(tab1Data1()) %>% 
-      add_trace(type = "bar", 
-                x= ~Analyte, 
-                y= ~AQL_Ratio, 
-                name = "<b>ALR</b>",
-                marker = list(color= "#990000")
-      ) %>% 
-      add_trace(type = "scatter",
-                mode = "lines",
-                line = list(color = "#000000"),
-                x= ~Analyte, 
-                y= ~ALR_1, 
-                name = "<b>ALR = 1</b>"
-      ) %>% 
-      add_trace(type = "scatter", 
-                mode = "markers",
-                marker = list(color= "#0000CC", symbol= "diamond"),
-                x= ~Analyte, 
-                y= ~DetectionFreq, 
-                name = "<b>Detection Frequency</b>", 
-                yaxis= "y2") %>% 
-      layout(
-        title = paste("<b>Aquatic Life Ratio Detection Frequency: ", input$Basin, "Basin <br>", input$Year[1], '-', input$Year[2], "</b>"),
-        xaxis = list(title="<b>Analyte</b>",
-                     categoryorder = "array",
-                     categoryarray = tab1Data1()[order(tab1Data1()$AQL_Ratio, decreasing = TRUE),]$Analyte,
-                     tickangle = -45),
-        yaxis = list(side = "left", title = "<b>Aquatic Life Ratio</b>", showline = TRUE,
-                     ticks = "outside"),
-        yaxis2 = list(
-          position = 1,
-          range = c(0, 105),
-          side = "right", 
-          title = "<b>Detection Frequency</b>", 
-          overlaying = 'y',
-          showgrid = FALSE,
-          mirror = TRUE,
-          showline = TRUE,
-          ticks = "outside"),
-        hovermode = 'x',
-        legend = list(x = 0.25, y = 1.1, orientation = "h", tracegroupgap = 10),
-        margin = list(r = 80,
-                      l = 80,
-                      t = 100,
-                      b = 180,
-                      pad = 0)
-      ) %>% plotConfig()
-    p$x$config$modeBarButtonsToAdd[1] <- toImage2
-    p
-  })
   
   #### Create plots for 'Analyte per Year' ####
   
