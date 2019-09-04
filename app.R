@@ -129,7 +129,7 @@ fluidPage(
                         div(id = "sidebarPanel", sidebarPanel(
                           div(tags$style(type='text/css', "#sideBarHide {float: right;}"), 
                               actionLink('sideBarHide', div(icon('chevron-left'),icon('chevron-left'),""))),
-                          sliderInput('Year', "Years", 1999, 2018, c(1999:2019),
+                          sliderInput('Year', "Years", 1999, 2019, c(1999:2019),
                                       value = c(2012,2018),
                                       dragRange = TRUE,
                                       step = 1,
