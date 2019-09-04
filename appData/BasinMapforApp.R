@@ -1,6 +1,6 @@
 library(leaflet)
 library(leaflet.extras)
-library(jpeg)
+# library(jpeg)
 library(sp)
 library(rgdal)
 
