@@ -26,6 +26,7 @@ library(webshot)
 library(htmltools)
 library(htmlwidgets)
 library(shinyalert)
+library(compiler)
 
 source("appData/Credentials.R")
 
