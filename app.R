@@ -1027,12 +1027,12 @@ $("#detectionMap").height(400);
                 name = input$Variable,
                 marker = list(color = "steelblue"),
                 hoverinfo = "text",
-                hovertext = paste0(input$Variable, " = ", format(round(yVar, 2), nsmall = 2),"<br>",
-                                   "Maximum = ", format(round(data$Maximum, 2), nsmall = 2)),
+                hovertext = ~paste0(input$Variable, " = ", format(round(yVar, 2), nsmall = 2),"<br>",
+                                   "Maximum = ", format(round(Maximum, 2), nsmall = 2)),
                 error_y = list(type = "data",
                                symmetric = FALSE,
                                array = ~errY,
-                               arrayminus = c(0,0,0,0,0,0,0,0,0,0,0,0))
+                               arrayminus = 0)
       ) %>% 
       add_trace(type = "scatter",
                 mode = "markers",
