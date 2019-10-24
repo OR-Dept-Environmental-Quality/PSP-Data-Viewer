@@ -250,7 +250,7 @@ fluidPage(
                                                                               )),
                                                                        column(1, checkboxInput('opaqueBasins', 'Opaque Basins?', value = FALSE)),
                                                                        column(1, div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
-                                                                                     a("NLCD Legend", href="https://www.mrlc.gov/nlcd11_leg.php", target="_blank"))
+                                                                                     a("NLCD Legend", href="https://www.mrlc.gov/data/legends/national-land-cover-database-2016-nlcd2016-legend", target="_blank"))
                                                                        ),
                                                                        column(1,div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
                                                                                     a("Crop Legend", href="https://www.nass.usda.gov/Research_and_Science/Cropland/docs/US_2017_CDL_legend.jpg", target="_blank"))
@@ -1191,7 +1191,8 @@ $("#detectionMap").height(400);
              yaxis = list(title = "<b>Aquatic Life Ratio"),
              margin = list(t = 60,
                            b =120)
-      ) %>% plotConfig()
+      ) %>% 
+      plotConfig()
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
   })
