@@ -1017,7 +1017,7 @@ $("#detectionMap").height(400);
     if(input$Variable == "Median"){
       yVar <- data$Median
       errY <- data$Error_Y_Med
-    } else {yVar <- data$Average
+    } else {yVar <- data$Average_Det
     errY <- data$Error_Y}
     
     p <- plot_ly(data) %>% 
