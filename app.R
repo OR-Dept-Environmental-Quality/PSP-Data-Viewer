@@ -765,7 +765,7 @@ server <- function(input, output, session) {
     else{input$Station}
   })
   
-  tab3Station <- reactive(filter(AllData_SumBy_Station(), StationDescription %in% input$Station)[,c(2,4)])
+  tab3Station <- reactive(filter(AllData_SumBy_Station(), StationDescription %in% input$Station)[,c(2,3)])
   
   output$helpText <- renderText("Press 'Backspace' to remove selections")
   
