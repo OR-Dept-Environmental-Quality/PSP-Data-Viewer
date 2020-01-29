@@ -60,7 +60,7 @@ toImage2 <- list(list(name = "Download Plot (Large)", #Additional button for Plo
 # configs <- c(displayModeBar='hover', editable=TRUE, showTips=TRUE, showAxisDragHandles=TRUE, showAxisRangeEntryBoxes=TRUE)
 BasinNames <- as.character(unique(AllData_NoVoid$Project)) #Names of each PSP Basin
 PollutantNames <- as.character(unique(AllData_NoVoid$Analyte)) #All analyte names
-StationIDs <- unique(AllData_SumBy_Station$StationDescription) #All station descriptions
+StationIDs <- unique(AllData_NoVoid$Station_Description) #All station descriptions
 AllData_NoVoid$AboveBench <- ifelse(AllData_NoVoid$AQL_Ratio > 1, 1, ifelse(is.na(AllData_NoVoid$AQL_Ratio), NA, 0)) #Add column indicating whether the result is above benchmark
 Vars <- as.character(colnames(AllData_NoVoid)) #Store all variable names in the main dataset
 AllData_NoVoid$Sampling_Date <- as.Date(AllData_NoVoid$Sampling_Date, "%Y-%m-%d") #Change format of date in main dataset
@@ -129,19 +129,27 @@ fluidPage(
                         div(id = "sidebarPanel", sidebarPanel(
                           div(tags$style(type='text/css', "#sideBarHide {float: right;}"), 
                               actionLink('sideBarHide', div(icon('chevron-left'),icon('chevron-left'),""))),
-                          sliderInput('Year', "Years", 1999, 2019, c(1999:2019),
-                                      value = c(2012,2018),
-                                      dragRange = TRUE,
-                                      step = 1,
-                                      sep = '',
-                                      animate = animationOptions(
-                                        loop = TRUE,
-                                        interval = 1500)),
+                          # sliderInput('Year', "Years", 1999, 2019, c(1999:2019),
+                          #             value = c(2012,2018),
+                          #             dragRange = TRUE,
+                          #             step = 1,
+                          #             sep = '',
+                          #             animate = animationOptions(
+                          #               loop = TRUE,
+                          #               interval = 1500)),
+                          dateRangeInput('date_range', 'Date Range', 
+                                         start = "2015-01-01", 
+                                         end = "2018-12-31", 
+                                         min = min(AllData_NoVoid$Sampling_Date, na.rm = TRUE),
+                                         max = max(AllData_NoVoid$Sampling_Date, na.rm = TRUE), 
+                                         format = "yyyy-mm-dd", startview = "year",
+                                         weekstart = 0, language = "en", separator = " to ", 
+                                         width = NULL, autoclose = TRUE),
                           div(HTML("<em>Note: Most recent year's data may not be complete.</em>")),
                           br(),
                           radioButtons("Basin", "Basins",
                                        choices = c("All", BasinNames)),
-                          leafletOutput('pspMap', width = '100%', height = 300),
+                          leafletOutput('pspMap', width = '100%', height = "300px"),
                           width = 2
                         )),
                         #Main panel holds the meat of the data visualization
@@ -233,8 +241,43 @@ fluidPage(
                                                                      )
                                                            )
                                                   ),
+                                                  #### Tab 4 - UI for Custom Plot ####
+
+                                                  tabPanel("Custom Plot (Beta)", value = "custom_tab",
+                                                           mainPanel(width = 12,
+                                                                     fluidRow(
+                                                                       column(1, tags$body(h3("Inputs: "))),
+                                                                       column(2, selectizeInput('custom_station', "StationID",
+                                                                                                choices = c('All', StationIDs),
+                                                                                                options = list(placeholder = "Choose Stations"),
+                                                                                                multiple = TRUE, width = '100%')),
+                                                                       column(2, selectizeInput('custom_analyte', "Analyte",
+                                                                                                choices = c('All', PollutantNames),
+                                                                                                options = list(placeholder = 'Choose Analytes'),
+                                                                                                multiple = TRUE, width = '100%')),
+                                                                       column(2, selectizeInput('x_var', "X Variable",
+                                                                                                choices = Vars,
+                                                                                                selected = 'Sampling_Date',
+                                                                                                multiple = FALSE, width = '100%')),
+                                                                       column(2, selectizeInput('y_var', "Y Variable",
+                                                                                                choices = Vars,
+                                                                                                selected = 'Result.ug.l',
+                                                                                                multiple = FALSE, width = '100%')),
+                                                                       column(1, selectizeInput('plot_type', "Type",
+                                                                                                choices = c("markers", "lines+markers", "box"),
+                                                                                                options = list(placeholder = 'Plot Type'),
+                                                                                                multiple = FALSE, width = '100%')),
+                                                                       column(1, selectizeInput('group_type', "Split By",
+                                                                                                choices = c("None", "Analyte", "Station", "Basin"),
+                                                                                                options = list(placeholder = 'Choose grouping variable'),
+                                                                                                multiple = FALSE, width = '100%'))
+                                                                     ),
+                                                                     fluidRow(actionButton('create_plot', "Create Plot")),
+                                                                     plotlyOutput("custom_plot", width = "100%", height = "100%")
+                                                           )
+                                                  ),
                                                   
-                                                  #### Tab4 - UI for tab that produces a spatial representation of detections for the selected analytes ####
+                                                  #### Tab5 - UI for tab that produces a spatial representation of detections for the selected analytes ####
                                                   
                                                   tabPanel(icon=icon("map"), "Detection Map", value = "detectionMap",
                                                            mainPanel(width = '100%',
@@ -360,22 +403,25 @@ server <- function(input, output, session) {
   #### Reactive variables to be used throughout app ####
   
   output$pspMap <- renderLeaflet({
-    leaflet() %>% addProviderTiles(providers$OpenStreetMap.BlackAndWhite) %>% addPolygons(data=bsnSelect(),
-                                                                                          label = bsnSelect()@data$PSP_Name,
-                                                                                          stroke = TRUE,
-                                                                                          weight = 1, fillOpacity = 0.4, smoothFactor = 0.5,
-                                                                                          fillColor = topo.colors(length(bsnSelect()@data$PSP_Name), alpha = NULL),
-                                                                                          highlight = highlightOptions(
-                                                                                            weight = 5,
-                                                                                            color = "#666",
-                                                                                            # dashArray = "",
-                                                                                            fillOpacity = 0.7,
-                                                                                            bringToFront = FALSE),
-                                                                                          labelOptions = labelOptions(
-                                                                                            style = list("font-weight" = "normal", padding = "3px 8px"),
-                                                                                            textsize = "15px",
-                                                                                            direction = "auto")
-    )
+    req(bsnSelect())
+    leaflet() %>% 
+      addProviderTiles(providers$Stamen.TonerLite) %>%
+      addPolygons(data=bsnSelect(),
+                  label = bsnSelect()@data$PSP_Name,
+                  stroke = TRUE,
+                  weight = 1, fillOpacity = 0.4, smoothFactor = 0.5,
+                  fillColor = topo.colors(length(bsnSelect()@data$PSP_Name), alpha = NULL),
+                  highlight = highlightOptions(
+                    weight = 5,
+                    color = "#666",
+                    # dashArray = "",
+                    fillOpacity = 0.7,
+                    bringToFront = FALSE),
+                  labelOptions = labelOptions(
+                    style = list("font-weight" = "normal", padding = "3px 8px"),
+                    textsize = "15px",
+                    direction = "auto")
+      )
   })
   
   # unique((AllData_NoVoid %>%
@@ -401,25 +447,87 @@ server <- function(input, output, session) {
     }
   )
   
+  data_filtered <- reactive({
+    req(input$date_range)
+    AllData_NoVoid %>% 
+      dplyr::filter(Sampling_Date >= input$date_range[1],
+                    Sampling_Date <= input$date_range[2],
+                    Project %in% Basin1())
+  })
+  
+  AllData_SumBy_Basin <- reactive({
+    data_filtered() %>%
+    group_by(Analyte, Project, add=TRUE) %>%
+    dplyr:::summarise(DetectFreq = sum(!is.na(Result.ug.l))/length(Result.ug.l),
+                      N_Samples = length(Analyte),
+                      N_Detects = sum(!is.na(Result.ug.l)),
+                      AQL_Value = ifelse(!is.na(min(min.AQL.value)), min(min.AQL.value), NA),
+                      AQL.Ratio = ifelse(is.infinite(max(AQL_Ratio, na.rm = TRUE)),NA, max(AQL_Ratio, na.rm = TRUE)),
+                      Over_AQL = sum(na.omit(AQL_Ratio) > 1.0),
+                      "AQL_50_100" = sum(na.omit(AQL_Ratio) > 0.5 & na.omit(AQL_Ratio) <= 1.0),
+                      "AQL_10_50" = sum(na.omit(AQL_Ratio) > 0.1 & na.omit(AQL_Ratio) <= 0.5),
+                      "AQL_0_10" = sum(na.omit(AQL_Ratio) <= 0.1)
+                      # ,
+                      # HH_Value = min(min.HH.value, na.rm = TRUE),
+                      # HH.Ratio = max(HH_Ratio, na.rm = TRUE),
+                      # Over_HH = sum(na.omit(HH_Ratio) > 1.0),
+                      # "50_100_HH" = sum(na.omit(HH_Ratio) > 0.5 & na.omit(HH_Ratio) <= 1.0),
+                      # "10_50_HH" = sum(na.omit(HH_Ratio) > 0.1 & na.omit(HH_Ratio) <= 0.5),
+                      # "<10_HH" = sum(na.omit(HH_Ratio) <= 0.1)
+    )
+  })
+  
+  AllData_SumBy_Station <- reactive({
+    data_filtered() %>%
+    group_by(Analyte, Station_ID, add=TRUE) %>%
+    dplyr:::summarise(StationDescription = first(Station_Description),
+                      DetectFreq = sum(!is.na(Result.ug.l))/length(Result.ug.l),
+                      N_Samples = length(Analyte),
+                      N_Detects = sum(!is.na(Result.ug.l)),
+                      AQL_Value = ifelse(!is.na(min(min.AQL.value)), min(min.AQL.value), NA),
+                      AQL.Ratio = max(AQL_Ratio, na.rm = TRUE),
+                      Over_AQL = sum(na.omit(AQL_Ratio) > 1.0),
+                      "AQL_50_100" = sum(na.omit(AQL_Ratio) > 0.5 & na.omit(AQL_Ratio) <= 1.0),
+                      "AQL_10_50" = sum(na.omit(AQL_Ratio) > 0.1 & na.omit(AQL_Ratio) <= 0.5),
+                      "AQL_0_10" = sum(na.omit(AQL_Ratio) <= 0.1),
+                      # HH_Value = min(min.HH.value, na.rm = TRUE),
+                      # HH.Ratio = max(HH_Ratio, na.rm = TRUE),
+                      # Over_HH = sum(na.omit(HH_Ratio) > 1.0),
+                      # "50_100_HH" = sum(na.omit(HH_Ratio) > 0.5 & na.omit(HH_Ratio) <= 1.0),
+                      # "10_50_HH" = sum(na.omit(HH_Ratio) > 0.1 & na.omit(HH_Ratio) <= 0.5),
+                      # "<10_HH" = sum(na.omit(HH_Ratio) <= 0.1),
+                      Avg_Result = mean(Result.ug.l, na.rm = TRUE),
+                      Max_Result = max(Result.ug.l, na.rm = TRUE)
+    )
+  })
+  
+  observeEvent(input$date_range, ({
+
+  }), ignoreInit = TRUE)
+  
   #Filter the station choices by the basin selected in the sidebar
   observeEvent(input$Basin, ({
     updateSelectInput(session, inputId = 'Station', label = "StationID", choices = c('All', sort(StationIDs())))
     updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
+    updateSelectInput(session, inputId = 'custom_station', label = 'Station ID', choices = c('All', sort(StationIDs())))
   }), ignoreInit = TRUE)
   
   #### All Analytes tab ####
   
-  output$tab1Title <- renderText(paste0(BasinName(), " ", input$Year[1], "-", input$Year[2]))
+  output$tab1Title <- renderText(paste0(BasinName(), " ", input$date_range[1], " to ", input$date_range[2]))
   
   ### Format data ###
   tab1Data <- reactive({
-    t <- AllData_SumBy_Basin %>% 
-      dplyr::group_by(Analyte) %>%
-      dplyr::filter(Project %in% Basin1(),
-                    Year >= input$Year[1],
-                    Year <= input$Year[2]
-                    
+    t <- AllData_SumBy_Basin() %>% 
+      dplyr::filter(Project %in% Basin1()
+      #               # ,
+      #               # Year >= input$Year[1],
+      #               # Year <= input$Year[2]
+      #               # Sampling_Date >= input$date_range[1],
+      #               # Sampling_Date <= input$date_range[2]
+      #               
       ) %>%
+      dplyr::group_by(Analyte) %>%
       dplyr::summarise(NSamples = sum(N_Samples),
                        NDetects = sum(N_Detects),
                        DetectionFreq = round((NDetects/NSamples)*100, 2),
@@ -454,7 +562,7 @@ server <- function(input, output, session) {
       need(max(tab1Data1()$DetectionFreq) > 0, "No Detections")
     )
     p <- FreqPlot(tab1Data1(), tab1Data1()$Analyte, -tab1Data1()$DetectionFreq) %>% 
-      layout(title = paste("<b>Detection Frequency: ", input$Basin, " ", input$Year[1], "-", input$Year[2], "</b>"),
+      layout(title = paste("<b>Detection Frequency: ", BasinName(), "<br>", input$date_range[1], "to", input$date_range[2], "</b>"),
              xaxis = list(title="<b>Analyte</b>",
                           tickangle = -45),
              yaxis = list(side = "left", title = "<b>Detection Frequency (%)</b>", showline = TRUE,
@@ -463,7 +571,7 @@ server <- function(input, output, session) {
                            l = 130,
                            t = 60
                            # , b = 180
-             )) %>%  plotConfig()
+             )) %>% plotConfig()
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
   })
@@ -485,7 +593,7 @@ server <- function(input, output, session) {
                 name = "Over Benchmark",
                 width = 0.75,
                 color = I('#b30000')) %>% 
-      layout(title = paste0("<b>Detection Frequency over 50% of Benchmark: ", input$Basin, " ", input$Year[1], "-", input$Year[2], "</b>"),
+      layout(title = paste0("<b>Detection Frequency over 50% of Benchmark: ", BasinName(), "<br>", input$date_range[1], " to ", input$date_range[2], "</b>"),
              barmode = 'stack',
              hovermode = 'x',
              yaxis = list(title = '<b>Detection Frequency</b>',
@@ -524,16 +632,17 @@ server <- function(input, output, session) {
                 name = "<b>Detection Frequency</b>", 
                 yaxis= "y2") %>% 
       layout(
-        title = paste("<b>Aquatic Life Ratio Detection Frequency: ", input$Basin, "Basin <br>", input$Year[1], '-', input$Year[2], "</b>"),
+        title = paste("<b>Aquatic Life Ratio Detection Frequency: ", BasinName(), "<br>", input$date_range[1], 'to', input$date_range[2], "</b>"),
         xaxis = list(title="<b>Analyte</b>",
                      categoryorder = "array",
                      categoryarray = tab1Data1()[order(tab1Data1()$AQL_Ratio, decreasing = TRUE),]$Analyte,
                      tickangle = -45),
         yaxis = list(side = "left", title = "<b>Aquatic Life Ratio</b>", showline = TRUE,
-                     ticks = "outside"),
+                     ticks = "outside", rangemode = "tozero"),
         yaxis2 = list(
           position = 1,
           range = c(0, 105),
+          rangemode = "tozero",
           side = "right", 
           title = "<b>Detection Frequency</b>", 
           overlaying = 'y',
@@ -557,8 +666,9 @@ server <- function(input, output, session) {
   
   ### Filter Data ###
   tab2DetFreqData <- reactive({
-    AllData_NoVoid %>% filter(Project %in% Basin1(), Station_Description %in% Station3(),
-                              Year >= input$Year[1], Year <= input$Year[2], Analyte %in% input$Analyte) %>% 
+    data_filtered() %>% filter(Station_Description %in% Station3(), Analyte %in% input$Analyte
+                               # , Project %in% Basin1(), Year >= input$Year[1], Year <= input$Year[2]
+                               ) %>% 
       group_by(Analyte, Year) %>%
       dplyr:::summarise(NSamples = length(Analyte),
                         NDetects = sum(!is.na(Result.ug.l)),
@@ -574,10 +684,11 @@ server <- function(input, output, session) {
   })
   
   tab2Data2 <- reactive({
-    AllData_NoVoid %>% 
-      filter(Year >= input$Year[1],
-             Year <= input$Year[2],
-             Project %in% Basin1(),
+    data_filtered() %>% 
+      filter(
+        # Year >= input$Year[1],
+        #      Year <= input$Year[2],
+        #      Project %in% Basin1(),
              Analyte %in% input$Analyte,
              Station_Description %in% Station3())
   })
@@ -603,12 +714,13 @@ server <- function(input, output, session) {
   })
   
   tab2Data3 <- reactive({
-    AllData_NoVoid %>% 
-      filter(Analyte %in% input$Analyte,
-             Year >= input$Year[1],
-             Year <= input$Year[2],
-             Project %in% Basin1()
-             ,
+    data_filtered() %>% 
+      filter(
+        Analyte %in% input$Analyte,
+        #      Year >= input$Year[1],
+        #      Year <= input$Year[2],
+             # Project %in% Basin1()
+             # ,
              # Result.ug.l > 0,
              # Mon >= startSeason,
              # Mon <= endSeason,
@@ -653,7 +765,7 @@ server <- function(input, output, session) {
     else{input$Station}
   })
   
-  tab3Station <- reactive(filter(AllData_SumBy_Station, StationDescription %in% input$Station)[,c(2,4)])
+  tab3Station <- reactive(filter(AllData_SumBy_Station(), StationDescription %in% input$Station)[,c(2,4)])
   
   output$helpText <- renderText("Press 'Backspace' to remove selections")
   
@@ -665,10 +777,13 @@ server <- function(input, output, session) {
   striped = TRUE)
   
   tab3Data <- reactive({
-    tab3Data <- AllData_SumBy_Station %>% 
+    tab3Data <- AllData_SumBy_Station() %>% 
       group_by(Analyte) %>%
-      filter(Year >= input$Year[1],
-             Year <= input$Year[2],
+      filter(
+        # Sampling_Date >= input$date_range[1],
+        #      Sampling_Date <= input$date_range[2],
+             # Year >= input$Year[1],
+             # Year <= input$Year[2],
              StationDescription %in% Station2(),
              Analyte %in% Analyte2()
       ) %>%
@@ -690,10 +805,11 @@ server <- function(input, output, session) {
   })
   
   tab3Data2 <- reactive({
-    AllData_NoVoid %>% 
-      filter(Year >= input$Year[1],
-             Year <= input$Year[2],
-             Project %in% Basin1(),
+    data_filtered() %>% 
+      filter(
+        # Year >= input$Year[1],
+        #      Year <= input$Year[2],
+        #      Project %in% Basin1(),
              Station_Description %in% Station2(),
              Analyte %in% Analyte2(),
              if(input$OnlyDetects == TRUE){Result.ug.l > 0}
@@ -701,9 +817,12 @@ server <- function(input, output, session) {
   })
   
   tab3Data3 <- reactive({
-    AllData_SumBy_Station %>% 
-      filter(Year >= input$Year[1],
-             Year <= input$Year[2],
+    AllData_SumBy_Station() %>% 
+      filter(
+        # Sampling_Date >= input$date_range[1],
+        #      Sampling_Date <= input$date_range[2],
+             # Year >= input$Year[1],
+             # Year <= input$Year[2],
              StationDescription %in% Station2(),
              Analyte %in% Analyte2(),
              if(input$OnlyDetects == TRUE){Max_Result > 0}
@@ -714,7 +833,7 @@ server <- function(input, output, session) {
   
   MapAnalyte <- reactive(
     if(input$Analyte4 == "All"){
-      MapAnalyte <- unique(AllData_NoVoid$Analyte)
+      MapAnalyte <- unique(data_filtered()$Analyte)
     }
     else{
       MapAnalyte <- input$Analyte4
@@ -724,12 +843,13 @@ server <- function(input, output, session) {
   # Format data for 'Detection Map' and plot
   
   mapData <- reactive({
-    AllData_NoVoid %>%
-      filter(Year >= input$Year[1],
-             Year <= input$Year[2],
+    data_filtered() %>%
+      filter(
+        # Year >= input$Year[1],
+        #      Year <= input$Year[2],
              !is.na(Result.ug.l),
              AQL_Ratio > input$ALR | is.na(AQL_Ratio),
-             Project %in% Basin1(),
+             # Project %in% Basin1(),
              Analyte %in% MapAnalyte())
   })
   
@@ -1197,16 +1317,63 @@ $("#detectionMap").height(400);
     p
   })
   
-  # output$tab3plot3 <- renderPlotly({
-  #   validate(
-  #     need(max(tab3Data3()$Avg_Result) > 0, "No detections at this station")
-  #   )
-  #   ggplot(tab3Data3(), aes(x=Year, y=Avg_Result, ymin=Avg_Result, ymax=Max_Result, fill=Station_ID, group=Station_ID, color='black')) +
-  #     geom_errorbar(position = 'dodge') +
-  #     geom_bar(position = 'dodge', stat = 'identity') +
-  #     scale_color_identity() +
-  #     scale_fill_identity()
-  # })
+  #### Create custom plot ####
+  
+  analyte4 <- reactive({
+    if('All' %in% input$custom_analyte){PollutantNames}
+    else{input$custom_analyte}
+  })
+  
+  station4 <- reactive({
+    if('All' %in% input$custom_station){StationIDs()}
+    else{input$custom_station}
+  })
+  
+  group_type <- reactive({
+    if(input$group_type == "Analyte"){
+      ~Analyte
+    } else if(input$group_type == "Station"){
+      ~Station_Description
+    } else if(input$group_type == "Basin"){
+      ~Project
+    } else if(input$group_type == "None"){
+      FALSE
+    }
+  })
+  
+  custom_data <- eventReactive(input$create_plot, {
+    data_filtered() %>% 
+      filter(Station_Description %in% station4(),
+             Analyte %in% analyte4(),
+             !is.na(Result.ug.l))
+  })
+  
+  custom_plot <- eventReactive(input$create_plot, {
+    p <- plot_ly(custom_data())
+    if(input$plot_type %in% c("markers", "lines+markers")){
+      p <- p %>% add_trace(p, type = "scatter", mode = ~input$plot_type,
+                           x = ~get(input$x_var), y = ~get(input$y_var),
+                           split = group_type(),
+                           symbol=group_type(),
+                           symbols=~symbolCodes)
+    } else if(input$plot_type == "bar"){
+      p <- p %>% add_bars(p, x = ~get(input$x_var), y = ~get(input$y_var),
+                          split = group_type()) %>% 
+        layout(barmode = 'group')
+    } else if(input$plot_type == "box"){
+      p <- p %>% add_boxplot(p, x = ~get(input$x_var), y = ~get(input$y_var),
+                             split = group_type()) %>% 
+        layout(barmode = 'group')
+    }
+    p %>% layout(xaxis = list(title = ""), yaxis = list(title = "")) %>% plotConfig()
+  })
+  
+  output$custom_plot <- renderPlotly({
+    validate(
+      need(nrow(custom_data()) > 0, "No data for these selections, please update inputs and create plot.")
+    )
+    custom_plot()
+  })
   
   #### Create table for tab1 ####
   

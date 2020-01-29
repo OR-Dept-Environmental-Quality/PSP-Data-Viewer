@@ -81,8 +81,7 @@ plotConfig <- function(p){
          yaxis = list(titlefont=list(size=14),
                       tickfont=list(size=12)),
          legend = list(font=list(size=14))) %>% 
-    plotly::config(displayModeBar='hover', editable=TRUE, showTips=TRUE, showAxisDragHandles=TRUE, showAxisRangeEntryBoxes=TRUE,
-                   collaborate=FALSE, displaylogo=FALSE)
+    plotly::config(displayModeBar='hover', editable=TRUE, showTips=TRUE, showAxisDragHandles=TRUE, showAxisRangeEntryBoxes=TRUE, displaylogo=FALSE)
 }
 
 #### Function for Navbar with text elements ####
