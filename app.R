@@ -45,6 +45,7 @@ Terms <- fread('appData/Glossary of Terms.csv') #Reference material
 IngredientDescriptions <- fread('appData/Ingredient Descriptions.csv') #Reference material
 symbolCodes <- fread("appData/plotlyShapes.csv") #Symbols to be used with Plotly package
 symbolCodes <- symbolCodes$symbol #Symbol codes as list
+open_symbol_codes <- symbolCodes[28:72]
 toImage2 <- list(list(name = "Download Plot (Large)", #Additional button for Plotly modebar that downloads
                       icon = list(width = 1000, ascent = 800,descent = -50,
                                   path = "m500 450c-83 0-150-67-150-150 0-83 67-150 150-150 83 0 150 67 150 150 0 83-67 150-150 150z m400 150h-120c-16 0-34 13-39 29l-31 93c-6 15-23 28-40 28h-340c-16 0-34-13-39-28l-31-94c-6-15-23-28-40-28h-120c-55 0-100-45-100-100v-450c0-55 45-100 100-100h800c55 0 100 45 100 100v450c0 55-45 100-100 100z m-400-550c-138 0-250 112-250 250 0 138 112 250 250 250 138 0 250-112 250-250 0-138-112-250-250-250z m365 380c-19 0-35 16-35 35 0 19 16 35 35 35 19 0 35-16 35-35 0-19-16-35-35-35z"),
@@ -62,7 +63,11 @@ BasinNames <- as.character(unique(AllData_NoVoid$Project)) #Names of each PSP Ba
 PollutantNames <- as.character(unique(AllData_NoVoid$Analyte)) #All analyte names
 StationIDs <- unique(AllData_NoVoid$Station_Description) #All station descriptions
 AllData_NoVoid$AboveBench <- ifelse(AllData_NoVoid$AQL_Ratio > 1, 1, ifelse(is.na(AllData_NoVoid$AQL_Ratio), NA, 0)) #Add column indicating whether the result is above benchmark
-Vars <- as.character(colnames(AllData_NoVoid)) #Store all variable names in the main dataset
+# Vars <- as.character(colnames(AllData_NoVoid)) #Store all variable names in the main dataset
+Vars <- data.frame(back = c("Analyte", "Station_ID", "Project", "Station_Description", "Sampling_Date",
+                            "Sampled", "Result.ug.l", "min.AQL.value", "AQL_Ratio", "Year", "Mon"), 
+                   front = c("Analyte", "Station_ID", "Basin", "Station_Description", "Sampling_Date",
+          "Sampling_Datetime", "Concentration", "Min_ALB", "ALR", "Year", "Month"), stringsAsFactors = FALSE) #Store all variable names in the main dataset
 AllData_NoVoid$Sampling_Date <- as.Date(AllData_NoVoid$Sampling_Date, "%Y-%m-%d") #Change format of date in main dataset
 
 easyPrintPlugin <- htmlDependency(name = "leaflet-easyprint",
@@ -150,11 +155,11 @@ fluidPage(
                           radioButtons("Basin", "Basins",
                                        choices = c("All", BasinNames)),
                           leafletOutput('pspMap', width = '100%', height = "300px"),
-                          width = 2
+                          width = 3
                         )),
                         #Main panel holds the meat of the data visualization
                         div(id = "mainPanel1",
-                            mainPanel(width = 10,
+                            mainPanel(width = 9,
                                       # fluidRow(div(style = "height: 10px;",checkboxInput('sidebar', "Show Sidebar", value = TRUE))),
                                       div(div(type = 'text/css', style = "height: 10px; float: left;", hidden(actionLink('sideBarShow',div(icon('chevron-right'),icon('chevron-right'),"")))),
                                               h2(strong(textOutput('tab1Title')))
@@ -246,34 +251,45 @@ fluidPage(
                                                   tabPanel("Custom Plot (Beta)", value = "custom_tab",
                                                            mainPanel(width = 12,
                                                                      fluidRow(
-                                                                       column(1, tags$body(h3("Inputs: "))),
-                                                                       column(2, selectizeInput('custom_station', "StationID",
+                                                                       column(6, selectizeInput('custom_station', "StationID(s)",
                                                                                                 choices = c('All', StationIDs),
-                                                                                                options = list(placeholder = "Choose Stations"),
+                                                                                                options = list(placeholder = "Choose Station(s)"),
                                                                                                 multiple = TRUE, width = '100%')),
-                                                                       column(2, selectizeInput('custom_analyte', "Analyte",
+                                                                       column(6, selectizeInput('custom_analyte', "Analyte(s)",
                                                                                                 choices = c('All', PollutantNames),
-                                                                                                options = list(placeholder = 'Choose Analytes'),
-                                                                                                multiple = TRUE, width = '100%')),
+                                                                                                options = list(placeholder = 'Choose Analyte(s)'),
+                                                                                                multiple = TRUE, width = '100%'))
+                                                                       ),
+                                                                     fluidRow(
+                                                                       column(2, selectizeInput('group', "Scatter or Group", 
+                                                                                                choices = c('Scatter', 'Group'))),
                                                                        column(2, selectizeInput('x_var', "X Variable",
-                                                                                                choices = Vars,
+                                                                                                choices = Vars$front,
                                                                                                 selected = 'Sampling_Date',
                                                                                                 multiple = FALSE, width = '100%')),
                                                                        column(2, selectizeInput('y_var', "Y Variable",
-                                                                                                choices = Vars,
-                                                                                                selected = 'Result.ug.l',
+                                                                                                choices = c("None", Vars$front),
+                                                                                                selected = 'Concentration',
                                                                                                 multiple = FALSE, width = '100%')),
                                                                        column(1, selectizeInput('plot_type', "Type",
-                                                                                                choices = c("markers", "lines+markers", "box"),
+                                                                                                choices = c("markers", "lines", "box"),
                                                                                                 options = list(placeholder = 'Plot Type'),
                                                                                                 multiple = FALSE, width = '100%')),
-                                                                       column(1, selectizeInput('group_type', "Split By",
+                                                                       column(2, selectizeInput('y2', "Y2 Variable",
+                                                                                                choices = c("None", Vars$front),
+                                                                                                multiple = FALSE, width = '100%')),
+                                                                       conditionalPanel("input.y2 !== 'None'", column(1, selectizeInput('y2_type', "Y2 Type",
+                                                                                                choices = c("markers", "lines"),
+                                                                                                multiple = FALSE, width = '100%'))),
+                                                                       column(2, selectizeInput('split_by', "Split By",
                                                                                                 choices = c("None", "Analyte", "Station", "Basin"),
-                                                                                                options = list(placeholder = 'Choose grouping variable'),
+                                                                                                options = list(placeholder = 'Choose legend variable'),
                                                                                                 multiple = FALSE, width = '100%'))
                                                                      ),
                                                                      fluidRow(actionButton('create_plot', "Create Plot")),
-                                                                     plotlyOutput("custom_plot", width = "100%", height = "100%")
+                                                                     plotlyOutput("custom_plot", width = "100%", height = "100%"),
+                                                                     br(), br(),
+                                                                     dataTableOutput("custom_data")
                                                            )
                                                   ),
                                                   
@@ -284,7 +300,7 @@ fluidPage(
                                                                      fluidRow(
                                                                        column(3,
                                                                               div(style="z-index: 1001; position: relative;", selectInput('Analyte4', "Analyte", choices=PollutantNames,
-                                                                                          selected = 'diuron', multiple=FALSE))
+                                                                                                                                          selected = 'diuron', multiple=FALSE))
                                                                        ),
                                                                        column(3,
                                                                               selectInput('ALR', 'Aquatic Life Ratio',
@@ -315,7 +331,7 @@ fluidPage(
                                                                                 br(),
                                                                                 HTML("Crop data provided by the US Department of Agriculture 2017 <a href='https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php' target='_blank'> Crop Data Layer</a>"),
                                                                                 br(),
-                                                                                HTML("Land use data provided by the USGS 2011 <a href='https://www.mrlc.gov/nlcd2011.php' target='_blank'> National Land Cover Dataset</a>"),
+                                                                                HTML("Land use data provided by the USGS 2016 <a href='https://www.usgs.gov/centers/eros/science/national-land-cover-database?qt-science_center_objects=0#qt-science_center_objects' target='_blank'> National Land Cover Dataset</a>"),
                                                                                 br()
                                                                        )
                                                                      )
@@ -541,6 +557,7 @@ server <- function(input, output, session) {
                        AQL_Ratio = round(max(AQL.Ratio, na.rm = TRUE), 2),
                        ALR_1 = 1
       )
+    t[,"Analyte"] <- wrap_labels(labels = t$Analyte, n_char = 25)
     t
   })
   
@@ -563,14 +580,15 @@ server <- function(input, output, session) {
     )
     p <- FreqPlot(tab1Data1(), tab1Data1()$Analyte, -tab1Data1()$DetectionFreq) %>% 
       layout(title = paste("<b>Detection Frequency: ", BasinName(), "<br>", input$date_range[1], "to", input$date_range[2], "</b>"),
-             xaxis = list(title="<b>Analyte</b>",
+             xaxis = list(title="",
                           tickangle = -45),
              yaxis = list(side = "left", title = "<b>Detection Frequency (%)</b>", showline = TRUE,
                           ticks = "outside"),
-             margin = list(r = 80,
-                           l = 130,
-                           t = 60
-                           # , b = 180
+             margin = list(
+               # r = 80,
+                           # l = 20,
+                           # t = 80
+                           # , b = 100
              )) %>% plotConfig()
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
@@ -745,7 +763,7 @@ server <- function(input, output, session) {
   })
   
   maxY <- reactive(if(input$Variable=='Median'){max(tab2Data3()[,c("Median","Criteria")])
-  }else{max(tab2Data3()[,c("Average", "Criteria")], na.rm = TRUE)})
+  }else{max(tab2Data3()[,c("Average_Det", "Criteria")], na.rm = TRUE)})
   rangeMax <- reactive(signif(1.2*maxY(), 2))
   annotationX <- reactive({
     if(TRUE %in% (tab2Data3()$Maximum > rangeMax())){
@@ -937,8 +955,8 @@ $("#detectionMap").height(400);
       mapData() %>% filter(Station_Description %in% clickData())
     })
     landUseData <- reactive({
-      filter(LandUse, Station_De %in% clickData(), Year == 2011) %>%
-        melt(id.vars=c('Station_ID', 'Station_De', 'Basin', 'Year'),
+      filter(LandUse, Station_De %in% clickData(), Year == 2016) %>%
+        melt(id.vars=c('MLocID', 'Station_De', 'Basin', 'Year'),
              measure.vars=c('PerUrbanWs', 'PerForestWs', 'PerAgWs', 'PerOtherWs'),
              variable.name="variable",
              value.name="value")
@@ -975,7 +993,7 @@ $("#detectionMap").height(400);
               marker = list(colors = (c('#C82E0D', '#52994C', '#D4A506', '#75919A'))),
               pull = 0.05
       ) %>%
-        layout(title = "<b>NLCD 2011 Land Use",
+        layout(title = "<b>NLCD 2016 Land Use",
                margin=list(t=70, b=50)) %>% 
         plotly::config(displayModeBar='hover', editable=TRUE, collaborate=FALSE, displaylogo=FALSE)
     })
@@ -1001,7 +1019,7 @@ $("#detectionMap").height(400);
       mapData() %>% filter(Project %in% clickData())
     })
     landUseData <- reactive({
-      filter(bsnLandUse, Basin %in% clickData(), Year == 2011) %>%
+      filter(bsnLandUse, Basin %in% clickData(), Year == 2016) %>%
         melt(id.vars=c('Basin', 'Year'),
              measure.vars=c('PerUrbanCat', 'PerForestCat', 'PerAgCat', 'PerOtherCat'),
              variable.name="variable",
@@ -1042,7 +1060,7 @@ $("#detectionMap").height(400);
               marker = list(colors = (c('#C82E0D', '#52994C', '#D4A506', '#75919A'))),
               pull = 0.05
       ) %>%
-        layout(title = "<b>NLCD 2011 Land Use", margin=list(t=70, b=50)) %>% 
+        layout(title = "<b>NLCD 2016 Land Use", margin=list(t=70, b=50)) %>% 
         plotly::config(displayModeBar='hover', editable=TRUE, collaborate=FALSE, displaylogo=FALSE)
     })
     
@@ -1329,43 +1347,164 @@ $("#detectionMap").height(400);
     else{input$custom_station}
   })
   
-  group_type <- reactive({
-    if(input$group_type == "Analyte"){
+  split_by <- reactive({
+    if(input$split_by == "Analyte"){
       ~Analyte
-    } else if(input$group_type == "Station"){
+    } else if(input$split_by == "Station"){
       ~Station_Description
-    } else if(input$group_type == "Basin"){
-      ~Project
-    } else if(input$group_type == "None"){
-      FALSE
+    } else if(input$split_by == "Basin"){
+      ~Basin
+    } else if(input$split_by == "None"){
+      "Click to edit"
     }
   })
   
-  custom_data <- eventReactive(input$create_plot, {
-    data_filtered() %>% 
-      filter(Station_Description %in% station4(),
-             Analyte %in% analyte4(),
-             !is.na(Result.ug.l))
+  split_group <- reactive({
+    if(input$split_by == "None"){
+      NA
+    } else {
+      split_by()
+    }
   })
   
+  x_var <- reactive({
+    # if(input$group == "Group"){
+    #   group_by()
+    # } else if(input$group == "Scatter"){
+      ~get(input$x_var)
+    # }
+  })
+  
+  custom_data <- reactive(
+    # {
+    # input$group
+    # input$x_var
+    # input$create_plot
+    # }, 
+    {
+    df <- data_filtered() %>% 
+      filter(Station_Description %in% station4(),
+             Analyte %in% analyte4()) %>% select(Vars$back)
+    
+    names(df) <- Vars$front[match(names(df), Vars$back)]
+    df$Year <- as.character(df$Year)
+    
+    if(input$group == "Group"){
+      df <- df %>% dplyr::group_by_(input$x_var, split_group()) %>% 
+        dplyr::summarise(
+          n_samples = n(),
+          n_detects = sum(!is.na(Concentration)),
+          detection_frequency = n_detects/n_samples*100,
+          avg_concentration = ifelse(any(!is.na(Concentration)), mean(Concentration, na.rm = TRUE), 0),
+          med_concentration = ifelse(any(!is.na(Concentration)), median(Concentration, na.rm = TRUE), 0),
+          max_concentration = ifelse(any(!is.na(Concentration)), max(Concentration, na.rm = TRUE), 0),
+          avg_alr = ifelse(any(!is.na(ALR)), mean(ALR, na.rm = TRUE), NaN),
+          med_alr = ifelse(any(!is.na(ALR)), median(ALR, na.rm = TRUE), NaN),
+          max_alr = ifelse(any(!is.na(ALR)), max(ALR, na.rm = TRUE), NaN)
+          ) %>% ungroup()
+    } else if(input$group == "Scatter"){
+      df <- df %>% filter(!is.na(Concentration)) %>% select(Vars$front)
+    }
+    df$`NA` <- NULL
+    df
+  })
+  
+  observeEvent({
+    input$group
+  }, ({
+    if(input$group == "Group"){
+      updateSelectInput(session, inputId = 'plot_type', label = "Type",
+                        choices = c("markers", "lines", "box", "bar"))
+    } else if(input$group == "Scatter"){
+      updateSelectInput(session, inputId = 'plot_type', label = "Type",
+                        choices = c("markers", "lines", "box"))
+    }
+    updateSelectInput(session, inputId = 'y_var', label = "Y Variable",
+                      choices = colnames(custom_data() %>% dplyr::select(-one_of(input$x_var))))
+    updateSelectInput(session, inputId = 'y2', label = "Y2 Variable",
+                      choices = c("None", colnames(custom_data() %>% dplyr::select(-one_of(input$x_var)))))
+  }), ignoreInit = TRUE)
+  
+  y2_dash <- reactive({
+    if(input$y2_type == "line"){
+      "dash"
+    } else {NULL}
+  })
+  
+  # legend_title <- reactive({
+  #   if(input$y2 != "None"){
+  #     paste("<b>Group 1:</b>", input$y_var, "<br><b>Group 2:</b>", input$y2)
+  #   } else {input$y_var}
+  # })
+  
   custom_plot <- eventReactive(input$create_plot, {
-    p <- plot_ly(custom_data())
-    if(input$plot_type %in% c("markers", "lines+markers")){
+    p <- plot_ly(custom_data()) 
+    if(input$y2 != "None" | input$split_by != "None"){
+      p <- p %>% 
+        add_trace(type = "scatter", mode = "text", x = x_var(), y = ~get(input$y_var),
+                  text = "", color = I("white"), name = ~paste0("<b>", gsub("_", " ", input$y_var)))
+    }
+    if(input$plot_type %in% c("markers", "lines")){
       p <- p %>% add_trace(p, type = "scatter", mode = ~input$plot_type,
-                           x = ~get(input$x_var), y = ~get(input$y_var),
-                           split = group_type(),
-                           symbol=group_type(),
-                           symbols=~symbolCodes)
+                           x = x_var(), y = ~get(input$y_var),
+                           split = split_by(),
+                           color = split_by(),
+                           symbol=split_by(),
+                           symbols = ~symbolCodes,
+                           legendgroup = 'y',
+                           marker = list(size = 10
+                                         ),
+                           # name = input$y_var,
+                           connectgaps = TRUE)
     } else if(input$plot_type == "bar"){
       p <- p %>% add_bars(p, x = ~get(input$x_var), y = ~get(input$y_var),
-                          split = group_type()) %>% 
+                          legendgroup = 'y',
+                          # name = input$y_var,
+                          split = split_by()) %>% 
         layout(barmode = 'group')
     } else if(input$plot_type == "box"){
       p <- p %>% add_boxplot(p, x = ~get(input$x_var), y = ~get(input$y_var),
-                             split = group_type()) %>% 
+                             legendgroup = 'y',
+                             # name = input$y_var,
+                             split = split_by()) %>% 
         layout(barmode = 'group')
     }
-    p %>% layout(xaxis = list(title = ""), yaxis = list(title = "")) %>% plotConfig()
+    if(input$y2 != "None"){
+      p <- p %>% 
+        add_trace(type = "scatter", mode = "text", x = x_var(), y = ~get(input$y_var),
+                  text = "", color = I("white"), name = ~paste0("<b>", gsub("_", " ", input$y2))) %>% 
+        add_trace(p, type = "scatter", mode = ~input$y2_type,
+                  x = x_var(), y = ~get(input$y2),
+                  split = split_by(),
+                  # color = I("white"),
+                  symbol=split_by(),
+                  text = ~get(input$y2),
+                  symbols=~open_symbol_codes,
+                  marker = list(size = 12,
+                                # opacity = 0.9,
+                                line = list(color = I('black'),
+                                            width = 3)
+                                ),
+                  connectgaps = TRUE,
+                  line = list(dash = y2_dash()),
+                  legendgroup = 'y2',
+                  yaxis = "y2")
+    }
+    p <- p %>% layout(legend = list(x = 1.1),
+                      xaxis = list(title = gsub("_", " ", input$x_var)), 
+                      yaxis = list(title = gsub("_", " ", input$y_var),
+                                   rangemode = 'tozero'), 
+                      yaxis2 = list(title = gsub("_", " ", input$y2),
+                                    overlaying = "y",
+                                    side = "right",
+                                    # title = "<b>Detection Frequency</b>",
+                                    mirror = TRUE,
+                                    showgrid = FALSE,
+                                    # showline = TRUE,
+                                    rangemode = 'tozero'),
+                      margin = list(r = 60, l = 60, t = 60)) %>% plotConfig()
+    p$x$config$modeBarButtonsToAdd[1] <- toImage2
+    p
   })
   
   output$custom_plot <- renderPlotly({
@@ -1374,6 +1513,8 @@ $("#detectionMap").height(400);
     )
     custom_plot()
   })
+  
+  output$custom_data <- renderDataTable(custom_data())
   
   #### Create table for tab1 ####
   
@@ -1429,4 +1570,4 @@ print(Sys.time()-TS)
 
 #### Function that creates the app from one script ####
 
-shinyApp(ui = ui, server = server)
+shinyApp(ui = ui, server = server, options = list(quiet = TRUE))

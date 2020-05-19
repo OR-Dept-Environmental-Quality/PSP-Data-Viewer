@@ -55,7 +55,7 @@ FreqPlot <-
                 name = "# of Samples",
                 showlegend = FALSE,
                 hoverinfo = 'text',
-                hovertext = paste0("<b># of Samples: </b>", data2$NSamples)
+                hovertext = paste0(data2$Analyte, "<br><b># of Samples: </b>", data2$NSamples)
       ) %>% 
       layout(barmode = 'stack',
              hovermode = 'x',
@@ -65,7 +65,11 @@ FreqPlot <-
                           tickvals= ~Analyte,
                           ticktext= ~Analyte,
                           tickangle= -45),
-             margin = list(b = 180)
+             margin = list(t = 90,
+                           b = 100),
+             legend = list(orientation = "h", 
+                           x = 0, y = 1.1,
+                           tracegroupgap = 1)
       )
     return(plot)
   }
@@ -99,4 +103,11 @@ navbarPageWithText <- function(..., text) {
 registerPlugin <- function(map, plugin) {
   map$dependencies <- c(map$dependencies, list(plugin))
   map
+}
+
+#### Function to wrap axis labels ####
+wrap_labels <- function(labels, n_char){
+  sapply(labels, function(x){
+    stringr::str_wrap(x, width = n_char)
+  }, USE.NAMES = FALSE)
 }
