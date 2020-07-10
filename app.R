@@ -472,7 +472,7 @@ server <- function(input, output, session) {
   })
   
   AllData_SumBy_Basin <- reactive({
-    data_filtered() %>%
+    suppressWarnings(data_filtered() %>%
     group_by(Analyte, Project, add=TRUE) %>%
     dplyr:::summarise(DetectFreq = sum(!is.na(Result.ug.l))/length(Result.ug.l),
                       N_Samples = length(Analyte),
@@ -490,11 +490,11 @@ server <- function(input, output, session) {
                       # "50_100_HH" = sum(na.omit(HH_Ratio) > 0.5 & na.omit(HH_Ratio) <= 1.0),
                       # "10_50_HH" = sum(na.omit(HH_Ratio) > 0.1 & na.omit(HH_Ratio) <= 0.5),
                       # "<10_HH" = sum(na.omit(HH_Ratio) <= 0.1)
-    )
+    ))
   })
   
   AllData_SumBy_Station <- reactive({
-    data_filtered() %>%
+    suppressWarnings(data_filtered() %>%
     group_by(Analyte, Station_ID, add=TRUE) %>%
     dplyr:::summarise(StationDescription = first(Station_Description),
                       DetectFreq = sum(!is.na(Result.ug.l))/length(Result.ug.l),
@@ -514,7 +514,7 @@ server <- function(input, output, session) {
                       # "<10_HH" = sum(na.omit(HH_Ratio) <= 0.1),
                       Avg_Result = mean(Result.ug.l, na.rm = TRUE),
                       Max_Result = max(Result.ug.l, na.rm = TRUE)
-    )
+    ))
   })
   
   observeEvent(input$date_range, ({
@@ -534,7 +534,7 @@ server <- function(input, output, session) {
   
   ### Format data ###
   tab1Data <- reactive({
-    t <- AllData_SumBy_Basin() %>% 
+    t <- suppressWarnings(AllData_SumBy_Basin() %>% 
       dplyr::filter(Project %in% Basin1()
       #               # ,
       #               # Year >= input$Year[1],
@@ -556,7 +556,7 @@ server <- function(input, output, session) {
                        Per50_ = Per50_100 + Per100_,
                        AQL_Ratio = round(max(AQL.Ratio, na.rm = TRUE), 2),
                        ALR_1 = 1
-      )
+      ))
     t[,"Analyte"] <- wrap_labels(labels = t$Analyte, n_char = 25)
     t
   })
@@ -749,7 +749,7 @@ server <- function(input, output, session) {
         Station = first(Station_Description),
         Average = mean(ResultNA_0, na.rm = TRUE),
         Average_Det = ifelse(!is.na(mean(Result.ug.l, na.rm = TRUE)), mean(Result.ug.l, na.rm = TRUE), 0),
-        Maximum = max(Result.ug.l, na.rm = TRUE),
+        Maximum = ifelse(is.infinite(max(Result.ug.l, na.rm = TRUE)), NA, max(Result.ug.l, na.rm = TRUE)),
         Median = median(Result.ug.l, na.rm = TRUE),
         Error_Y = Maximum - Average,
         Error_Y_Med = Maximum - Median,
