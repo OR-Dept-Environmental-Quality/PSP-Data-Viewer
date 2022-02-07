@@ -21,7 +21,7 @@ bsns <- readOGR(dsn = 'appData/PSP_Locations',
                 layer = 'All_PSPBasins_08042016',
                 verbose = FALSE)
 stns <- readOGR(dsn = 'appData/PSP_Locations',
-                layer = 'XYPSPStations_2017_09_28',
+                layer = 'XYPSP_stations_AWQMS',
                 verbose = FALSE)
 
 bsns@data$PSP_Name <- as.character(bsns@data$PSP_Name)
@@ -58,16 +58,16 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData) {
     #                                      version = '1.3.0',
     #                                      transparent = TRUE)
     # ) %>%
-    addWMSTiles(baseUrl = 'https://www.mrlc.gov/geoserver/mrlc_display/NLCD_2016_Land_Cover_L48/wms?',
-                group = "Land Use (NLCD 2016) *Colors do not <br>
+    addWMSTiles(baseUrl = 'https://www.mrlc.gov/geoserver/mrlc_display/NLCD_2019_Land_Cover_L48/wms?',
+                group = "Land Use (NLCD 2019) *Colors do not <br>
                                        represent detections (see legend above map)",
-                layers = "NLCD_2016_Land_Cover_L48",
+                layers = "NLCD_2019_Land_Cover_L48",
                 options = WMSTileOptions(version = '1.3.0',
                                          format = 'image/png',
                                          transparent = TRUE)) %>% 
     addWMSTiles("https://nassgeodata.gmu.edu/CropScapeService/wms_cdlall.cgi?",
-                group = "Crops (CDL 2017)",
-                layers = "cdl_2017",
+                group = "Crops (CDL 2020)",
+                layers = "cdl_2020",
                 options = WMSTileOptions(crs = espg4326,
                                          format = 'image/png',
                                          version = '1.1.1',
@@ -107,14 +107,14 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData) {
     ) %>% 
     addMarkers(data = stnData,
                group = 'Stations',
-               lng = stnData@data$LONG,
-               lat = stnData@data$LAT,
+               lng = stnData@data$Long_DD,
+               lat = stnData@data$Lat_DD,
                # clusterOptions = markerClusterOptions(),
                options = markerOptions(riseOnHover = TRUE,
                                        keyboard = TRUE),
-               label = stnData@data$Station_De,
-               layerId = stnData@data$Station_De,
-               popup = paste0(stnData@data$Station_Id, " ", stnData@data$Station_De)
+               label = stnData@data$StationDes,
+               layerId = stnData@data$StationDes,
+               popup = paste0(stnData@data$MLocID, " ", stnData@data$StationDes)
     ) %>%
     addPolygons(data = bsnData,
                 group = 'Basins',
@@ -146,13 +146,13 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData) {
     # ) %>% 
     addFullscreenControl(position='topright') %>% 
     # addSearchFeatures(targetGroups = 'Stations') %>% 
-    addLayersControl(overlayGroups = c('Stations', 'Detections', 'Basins', "Land Use (NLCD 2016) *Colors do not <br>
-                                       represent detections (see legend above map)", "Crops (CDL 2017)", "Streams (NHD)", "Hydrography"),
+    addLayersControl(overlayGroups = c('Stations', 'Detections', 'Basins', "Land Use (NLCD 2019) *Colors do not <br>
+                                       represent detections (see legend above map)", "Crops (CDL 2020)", "Streams (NHD)", "Hydrography"),
                      baseGroups = c("Street", "World Imagery"),
                      position = 'bottomleft'
     ) %>%
-    hideGroup(group = c('Stations', 'Land Use (NLCD 2016) *Colors do not <br>
-                                       represent detections (see legend above map)', 'Crops (CDL 2017)', 'Streams (NHD)', "Hydrography"))
+    hideGroup(group = c('Stations', 'Land Use (NLCD 2019) *Colors do not <br>
+                                       represent detections (see legend above map)', 'Crops (CDL 2020)', 'Streams (NHD)', "Hydrography"))
   map
   
 })

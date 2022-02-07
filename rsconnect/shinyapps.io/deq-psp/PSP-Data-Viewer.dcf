@@ -1,0 +1,13 @@
+name: PSP-Data-Viewer
+title: PSP-Data-Viewer
+username:
+account: deq-psp
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 4859341
+bundleId: 5133361
+url: https://deq-psp.shinyapps.io/PSP-Data-Viewer/
+when: 1634104324.87025
+lastSyncTime: 1634104324.87025
+asMultiple: FALSE
+asStatic: FALSE

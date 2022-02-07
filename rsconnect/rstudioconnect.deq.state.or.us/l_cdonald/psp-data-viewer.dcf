@@ -1,0 +1,12 @@
+name: psp-data-viewer
+title: PSP-Data-Viewer
+username: l_cdonald
+account: l_cdonald
+server: rstudioconnect.deq.state.or.us
+hostUrl: https://rstudioconnect.deq.state.or.us/__api__
+appId: 13
+bundleId: 35
+url: https://rstudioconnect.deq.state.or.us/content/13/
+when: 1612993511.92496
+asMultiple: FALSE
+asStatic: FALSE

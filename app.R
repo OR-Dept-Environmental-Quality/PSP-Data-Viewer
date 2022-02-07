@@ -28,7 +28,7 @@ library(htmlwidgets)
 library(shinyalert)
 library(compiler)
 
-source("appData/Credentials.R")
+# source("appData/Credentials.R")
 
 #### Bring in combined LASAR and ELEMENT Data ####
 
@@ -60,7 +60,7 @@ toImage2 <- list(list(name = "Download Plot (Large)", #Additional button for Plo
 ))
 # configs <- c(displayModeBar='hover', editable=TRUE, showTips=TRUE, showAxisDragHandles=TRUE, showAxisRangeEntryBoxes=TRUE)
 BasinNames <- as.character(unique(AllData_NoVoid$Project)) #Names of each PSP Basin
-PollutantNames <- as.character(unique(AllData_NoVoid$Analyte)) #All analyte names
+PollutantNames <- sort(as.character(unique(AllData_NoVoid$Analyte))) #All analyte names
 StationIDs <- unique(AllData_NoVoid$Station_Description) #All station descriptions
 AllData_NoVoid$AboveBench <- ifelse(AllData_NoVoid$AQL_Ratio > 1, 1, ifelse(is.na(AllData_NoVoid$AQL_Ratio), NA, 0)) #Add column indicating whether the result is above benchmark
 # Vars <- as.character(colnames(AllData_NoVoid)) #Store all variable names in the main dataset
@@ -110,7 +110,6 @@ fluidPage(
           title="", windowTitle= 'Pesticide Stewardship Partnership' #Add PSP title to browser tab
         )
     ),
-    
   #Add DEQ logo and PSP title to navbar
   navbarPageWithText(title = 
                div(img(src = "deqlogo.ico"),
@@ -118,17 +117,18 @@ fluidPage(
                      href="http://www.oregon.gov/ODA/programs/Pesticides/Water/Pages/PesticideStewardship.aspx", target="_blank")
                ), id = "navTab",
              tabPanel(icon=icon("bar-chart"), "Data Summaries", value = "dataSum",
-                      # Popup to suggest user guide and references
-                      modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! If you are new to this tool, check out the User Guide by clicking on the ",
-                                         img(src = "UserGuide.PNG"), " link in the Navigation Bar at the top of the window.",
-                                         br(),br(),
-                                         "You can find definitions, analyte descriptions and more in the ", img(src = "References.PNG"), " tab.",
-                                         br(),br(),
-                                         em(HTML("<center>"),"Please Note",HTML("<br>"),"This data viewer was developed to support Oregon's Pesticide Stewardship Partnership program, 
-                                            a voluntary program aimed to identify water quality issues related to pesticides, share monitoring results, 
-                                            implement solutions, and measure success. This data viewer provides access to information supporting this program and 
-                                            is not intended to be a comprehensive source of information about pesticide distribution in state waters.",HTML("</center>"))),
-                                  footer = modalButton("Dismiss"), fade = TRUE, easyClose = TRUE),
+                      
+                      # modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! If you are new to this tool, check out the User Guide by clicking on the ",
+                      #                    img(src = "UserGuide.PNG"), " link in the Navigation Bar at the top of the window.",
+                      #                    br(),br(),
+                      #                    "You can find definitions, analyte descriptions and more in the ", img(src = "References.PNG"), " tab.",
+                      #                    br(),br(),
+                      #                    em(HTML("<center>"),"Please Note",HTML("<br>"),"This data viewer was developed to support Oregon's Pesticide Stewardship Partnership program,
+                      #     a voluntary program aimed to identify water quality issues related to pesticides, share monitoring results,
+                      #     implement solutions, and measure success. This data viewer provides access to information supporting this program and
+                      #     is not intended to be a comprehensive source of information about pesticide distribution in state waters.",HTML("</center>"))),
+                      #             footer = modalButton("Dismiss"), fade = TRUE, easyClose = TRUE),
+                      
                       #### Sidebar code for parameter selection for all tabs ####
                       sidebarLayout(
                         div(id = "sidebarPanel", sidebarPanel(
@@ -309,10 +309,10 @@ fluidPage(
                                                                               )),
                                                                        column(1, checkboxInput('opaqueBasins', 'Opaque Basins?', value = FALSE)),
                                                                        column(1, div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
-                                                                                     a("NLCD Legend", href="https://www.mrlc.gov/data/legends/national-land-cover-database-2016-nlcd2016-legend", target="_blank"))
+                                                                                     a("NLCD Legend", href="https://www.mrlc.gov/data/legends/national-land-cover-database-2019-nlcd2019-legend", target="_blank"))
                                                                        ),
                                                                        column(1,div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
-                                                                                    a("Crop Legend", href="https://www.nass.usda.gov/Research_and_Science/Cropland/docs/US_2017_CDL_legend.jpg", target="_blank"))
+                                                                                    a("Crop Legend", href="https://www.nass.usda.gov/Research_and_Science/Cropland/docs/US_2020_CDL_legend.jpg", target="_blank"))
                                                                        ),
                                                                        column(1, offset=1, div(type='text/css', style="float: right; line-height: 65px; vertical-align: bottom;",
                                                                                                actionButton('expand', "Expand"), hidden(actionButton('collapse', "Collapse")))
@@ -326,8 +326,8 @@ fluidPage(
                                                                                 dataTableOutput("subPlotData")
                                                                        ),
                                                                        tabPanel("Upstream Land Use",
-                                                                                fluidRow(column(9,plotlyOutput("cdlPlot", height = '500px')),
-                                                                                         column(3, plotlyOutput('landUsePlot', height = '500px'))),
+                                                                                fluidRow(column(7,plotlyOutput("cdlPlot", height = '500px')),
+                                                                                         column(5, plotlyOutput('landUsePlot', height = '500px'))),
                                                                                 br(),
                                                                                 HTML("Crop data provided by the US Department of Agriculture 2017 <a href='https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php' target='_blank'> Crop Data Layer</a>"),
                                                                                 br(),
@@ -391,18 +391,36 @@ ui <- tagList(useShinyjs(),
 server <- function(input, output, session) {
   
   #### Code for password authentication ####
-  output$page <- renderUI(ui1())
-  output$tryAgain <- renderText("")
-  passcode <- reactive({
-    if(is.null(input$Password)){
-      'pass'
-    } else {input$Password}
+  output$page <- renderUI(ui2())
+  
+  # Popup to suggest user guide and references    
+  delay(5000, {
+    showModal(
+      modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! If you are new to this tool, check out the User Guide by clicking on the ",
+                         img(src = "UserGuide.PNG"), " link in the Navigation Bar at the top of the window.",
+                         br(),br(),
+                         "You can find definitions, analyte descriptions and more in the ", img(src = "References.PNG"), " tab.",
+                         br(),br(),
+                         em(HTML("<center>"),"Please Note",HTML("<br>"),"This data viewer was developed to support Oregon's Pesticide Stewardship Partnership program,
+                          a voluntary program aimed to identify water quality issues related to pesticides, share monitoring results,
+                          implement solutions, and measure success. This data viewer provides access to information supporting this program and
+                          is not intended to be a comprehensive source of information about pesticide distribution in state waters.",HTML("</center>"))),
+                  footer = modalButton("Dismiss"), fade = TRUE, easyClose = TRUE)
+    )
   })
-  observeEvent(input$go, {
-    if(input$Password == passw0rd){
-      output$page <- renderUI(ui2())
-    } else{output$tryAgain <- renderText("Incorrect Password")}
-  })
+  
+  
+  # output$tryAgain <- renderText("")
+  # passcode <- reactive({
+  #   if(is.null(input$Password)){
+  #     'pass'
+  #   } else {input$Password}
+  # })
+  # observeEvent(input$go, {
+  #   if(input$Password == passw0rd){
+  #     output$page <- renderUI(ui2())
+  #   } else{output$tryAgain <- renderText("Incorrect Password")}
+  # })
   
   # Show or hide sidebar on button click
   observeEvent(input$sideBarHide, {
@@ -440,6 +458,7 @@ server <- function(input, output, session) {
       )
   })
   
+  
   # unique((AllData_NoVoid %>%
   # filter(Project %in% Basin1()))$Station_ID
   # )
@@ -450,8 +469,10 @@ server <- function(input, output, session) {
   
   bsnSelect <- reactive({bsns[bsns@data$PSP_Name %in% Basin1(),]})
   
-  StationIDs <- reactive(unique(filter(AllData_NoVoid, Project %in% Basin1())$Station_Description))
-  stnSelect <- reactive({stns[stns@data$Station_De %in% StationIDs(),]})
+  StationIDs <- reactive(unique(filter(AllData_NoVoid, Project %in% Basin1(),
+                                       Sampling_Date >= input$date_range[1],
+                                       Sampling_Date <= input$date_range[2])$Station_Description))
+  stnSelect <- reactive({stns[stns@data$StationDes %in% StationIDs(),]})
   # %>% unite(ID_Des, c(Station_ID, Station_Description), remove=TRUE, sep = " - "))
   
   BasinName <- reactive(
@@ -1109,14 +1130,14 @@ $("#detectionMap").height(400);
     showElement(id="cdlTable")
     pnt <- reactive(LongLatToUTM(input$detectionMap_click$lng,input$detectionMap_click$lat))
     cdlData <- reactive(as.character(xmlTreeParse(content(GET("http://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLValue?",
-                                                              query=list(year=2017,
+                                                              query=list(year=2020,
                                                                          x=pnt()$X,
                                                                          y=pnt()$Y))))$doc$children$GetCDLValueResponse[1]$Result[1]$text)[6])
     cdlCat <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][4],'".*"'))[1])
     cdlCol <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][5],'".*"'))[1])
     output$cdlTable <- renderTable(data.frame(CDL.Category = cdlCat(),
                                               Color.Value = cdlCol(),
-                                              Map.Layer = "Crops (CDL 2017)"))
+                                              Map.Layer = "Crops (CDL 2020)"))
     output$cdlPanel <- renderText(paste('<span style="font-weight: normal;">', cdlCat(), '</span>'))
     # output$color <- renderUI(tags$style(type = "text/css",
     #                                     paste("#cdlTable {border-style: solid;
@@ -1125,7 +1146,7 @@ $("#detectionMap").height(400);
     #                          )
     output$cdlPop <- renderUI(div(style=paste("border-style: solid; border-color:", cdlCol(), "; text-align: center; font-weight: bold;
                                                          border-width: 8px; background-color: #FFFFFF; border-radius: 25px; z-index: 1001; position: relative;"),
-                                  "CDL 2017 Crop Category",
+                                  "CDL 2020 Crop Category",
                                   htmlOutput("cdlPanel")))
     
   })
@@ -1141,11 +1162,17 @@ $("#detectionMap").height(400);
   )
   
   output$terms <- renderDataTable(
-    Terms
+    Terms,
+    options = list(
+      autoWidth = TRUE,
+      columnDefs = list(list(width = '200px', targets = c(2))))
   )
   
   output$ingDescriptions <- renderDataTable(
-    IngredientDescriptions
+    IngredientDescriptions,
+    options = list(
+      autoWidth = TRUE,
+      columnDefs = list(list(width = '200px', targets = c(3))))
   )
   
   #### Create plots for 'Analyte per Year' ####
@@ -1562,8 +1589,7 @@ $("#detectionMap").height(400);
   }
   # , striped = TRUE
   )
-  
-  
+  modal = TRUE
 }
 
 print(Sys.time()-TS)

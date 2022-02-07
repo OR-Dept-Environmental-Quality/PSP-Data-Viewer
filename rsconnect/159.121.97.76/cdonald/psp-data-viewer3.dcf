@@ -1,0 +1,12 @@
+name: psp-data-viewer3
+title: PSP-Data-Viewer
+username: cdonald
+account: cdonald
+server: 159.121.97.76
+hostUrl: http://159.121.97.76:3939/__api__
+appId: 14
+bundleId: 18
+url: http://159.121.97.76:3939/content/14/
+when: 1600447511.03453
+asMultiple: FALSE
+asStatic: FALSE
