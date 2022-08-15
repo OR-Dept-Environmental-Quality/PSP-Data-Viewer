@@ -27,7 +27,7 @@ library(htmltools)
 library(htmlwidgets)
 library(shinyalert)
 library(compiler)
-
+options(scipen=999)
 # source("appData/Credentials.R")
 
 #### Bring in combined LASAR and ELEMENT Data ####
@@ -38,7 +38,10 @@ source("appData/AllDataforApp.R")
 
 source("appData/BasinMapforApp.R")
 
-LandUse <- fread("appData/PSPStationLandUse.csv") #Upstream land use by station
+POCs <- c("Diuron", "Imidacloprid", "Chlorpyrifos", "Oxyfluorfen", "Dimethenamid",
+          "Malathion", "Metolachlor")
+# LandUse <- fread("appData/PSPStationLandUse.csv") #Upstream land use by station
+LandUse <- stn_landuse #Upstream land use by station
 bsnLandUse <- fread("appData/PSPBasinLandUse.csv") #Land use within the PSP basin
 bsnCrops <- fread("appData/cdlBasinStats2017.csv") #2017 cdl crop breakdown within each PSP basin
 Terms <- fread('appData/Glossary of Terms.csv') #Reference material
@@ -53,7 +56,7 @@ toImage2 <- list(list(name = "Download Plot (Large)", #Additional button for Plo
                                Plotly.downloadImage(gd, {
                                format: 'jpeg',
                                filename: 'custom_plot',
-                               width: 1400,
+                               width: 1600,
                                height: 900
                                })
                                }")
@@ -74,6 +77,18 @@ easyPrintPlugin <- htmlDependency(name = "leaflet-easyprint",
                                   version = "2.2.1",
                                   src = c(file = "www/Leaflet.EasyPrint/dist"),
                                   script = "bundle.js")
+table_numbers <- function(x){
+    if(!is.na(x)){
+      if(x < 1 & x > 0){
+        # x <- prettyNum(x, digits = 2)
+      } else {
+        x <- round(x, digits = 0)
+      }
+      return(x)
+    } else {
+      return(x)
+    }
+}
 
 # Source functions for app
 
@@ -111,7 +126,7 @@ fluidPage(
         )
     ),
   #Add DEQ logo and PSP title to navbar
-  navbarPageWithText(title = 
+  navbarPage(title = 
                div(img(src = "deqlogo.ico"),
                    a("Pesticide Stewardship Partnership", 
                      href="http://www.oregon.gov/ODA/programs/Pesticides/Water/Pages/PesticideStewardship.aspx", target="_blank")
@@ -143,8 +158,8 @@ fluidPage(
                           #               loop = TRUE,
                           #               interval = 1500)),
                           dateRangeInput('date_range', 'Date Range', 
-                                         start = "2015-01-01", 
-                                         end = "2018-12-31", 
+                                         start = "2012-01-01", 
+                                         end = max(AllData_NoVoid$Sampling_Date, na.rm = TRUE), 
                                          min = min(AllData_NoVoid$Sampling_Date, na.rm = TRUE),
                                          max = max(AllData_NoVoid$Sampling_Date, na.rm = TRUE), 
                                          format = "yyyy-mm-dd", startview = "year",
@@ -153,13 +168,13 @@ fluidPage(
                           div(HTML("<em>Note: Most recent year's data may not be complete.</em>")),
                           br(),
                           radioButtons("Basin", "Basins",
-                                       choices = c("All", BasinNames)),
-                          leafletOutput('pspMap', width = '100%', height = "300px"),
-                          width = 3
+                                       choices = sort(c("All", BasinNames))),
+                          leafletOutput('pspMap', width = '100%', height = "200px"),
+                          width = 2
                         )),
                         #Main panel holds the meat of the data visualization
                         div(id = "mainPanel1",
-                            mainPanel(width = 9,
+                            mainPanel(width = 10,
                                       # fluidRow(div(style = "height: 10px;",checkboxInput('sidebar', "Show Sidebar", value = TRUE))),
                                       div(div(type = 'text/css', style = "height: 10px; float: left;", hidden(actionLink('sideBarShow',div(icon('chevron-right'),icon('chevron-right'),"")))),
                                               h2(strong(textOutput('tab1Title')))
@@ -174,9 +189,9 @@ fluidPage(
                                                            mainPanel(width = 12,
                                                                      tabsetPanel(
                                                                        # width = 12,
-                                                                            tabPanel("Detection Frequency", value='all1', plotlyOutput("plot1", width = "100%", height = "500px")),
-                                                                            tabPanel("Frequency Over 50%", value='all2', plotlyOutput("plot2", width = "100%", height = "500px")),
-                                                                            tabPanel("Aquatic Life Ratio", value='all3', plotlyOutput("plotALR", width = "100%", height = "500px"))
+                                                                            tabPanel("Detection Frequency", value='all1', plotlyOutput("plot1", width = "100%", height = "800px")),
+                                                                            tabPanel("Frequency Over 50%", value='all2', plotlyOutput("plot2", width = "100%", height = "800px")),
+                                                                            tabPanel("Aquatic Life Ratio", value='all3', plotlyOutput("plotALR", width = "100%", height = "800px"))
                                                                      ),
                                                                      checkboxInput("OnlyDetects", "Only Detected Analytes", TRUE),
                                                                      br(),
@@ -201,13 +216,13 @@ fluidPage(
                                                                tabPanel("Average/Max", value='apr1',
                                                                         selectInput('Variable', 'Variable',
                                                                                     choices = c('Average', 'Median'), width = '100%'),
-                                                                        plotlyOutput("AvgMaxTab2", width = "100%", height = "100%")),
+                                                                        plotlyOutput("AvgMaxTab2", width = "100%", height = "800px")),
                                                                tabPanel("Detection Frequency", value='apr2',
-                                                                        plotlyOutput("DetFreqTab2", width = "100%", height = "100%"),
+                                                                        plotlyOutput("DetFreqTab2", width = "100%", height = "800px"),
                                                                br(), br(),
                                                                dataTableOutput("tab2results")),
                                                                tabPanel("Detections by Station", value='apr3',
-                                                                        plotlyOutput('detectsStationPlot', width = '100%', height = '100%'))
+                                                                        plotlyOutput('detectsStationPlot', width = '100%', height = '800px'))
                                                              )
                                                              # plotlyOutput("resultPlot", width = "100%", height = "100%"),
                                                            )
@@ -233,12 +248,12 @@ fluidPage(
                                                                      
                                                                      tabsetPanel(
                                                                        tabPanel("Detection Frequency", value='ss1',
-                                                                                plotlyOutput("tab3plot1", width = "100%", height = "100%"),
+                                                                                plotlyOutput("tab3plot1", width = "100%", height = "800px"),
                                                                                 br(), br(),
                                                                                 dataTableOutput("tab3results")
                                                                        ),
-                                                                       tabPanel("AQL Ratio", value='ss2',
-                                                                                plotlyOutput("tab3plot2", width = "100%", height = "100%")
+                                                                       tabPanel("Aquatic Life Ratio", value='ss2',
+                                                                                plotlyOutput("tab3plot2", width = "100%", height = "800px")
                                                                        )
                                                                        # tabPanel("Historical Avg/Max",
                                                                        #          plotlyOutput("tab3plot3", width = "155%", height = "100%")
@@ -287,7 +302,7 @@ fluidPage(
                                                                                                 multiple = FALSE, width = '100%'))
                                                                      ),
                                                                      fluidRow(actionButton('create_plot', "Create Plot")),
-                                                                     plotlyOutput("custom_plot", width = "100%", height = "100%"),
+                                                                     plotlyOutput("custom_plot", width = "100%", height = "800px"),
                                                                      br(), br(),
                                                                      dataTableOutput("custom_data")
                                                            )
@@ -300,41 +315,45 @@ fluidPage(
                                                                      fluidRow(
                                                                        column(3,
                                                                               div(style="z-index: 1001; position: relative;", selectInput('Analyte4', "Analyte", choices=PollutantNames,
-                                                                                                                                          selected = 'diuron', multiple=FALSE))
+                                                                                                                                          selected = 'Diuron', multiple=FALSE))
                                                                        ),
                                                                        column(3,
                                                                               selectInput('ALR', 'Aquatic Life Ratio',
                                                                                           choices = c('above 0'=0, 'above 0.1'=0.1, 'above 0.5'=0.5, 'above 1.0'=1)
                                                                                           # , inline = TRUE
-                                                                              )),
-                                                                       column(1, checkboxInput('opaqueBasins', 'Opaque Basins?', value = FALSE)),
-                                                                       column(1, div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
+                                                                              ))
+                                                                       ),
+                                                                       HTML("<i>click on an individual station, basin, or detection to view</i>"),
+                                                                       tabsetPanel(
+                                                                         tabPanel("Detection Plot",
+                                                                                  plotlyOutput('subPlot', height = '300px')
+                                                                         ),
+                                                                         tabPanel("Upstream Land Use",
+                                                                                  # fluidRow(
+                                                                                    # column(7,plotlyOutput("cdlPlot", height = '500px')),
+                                                                                    plotlyOutput('landUsePlot', height = '300px'),
+                                                                                  # br(),
+                                                                                  # HTML("Crop data provided by the US Department of Agriculture 2017 <a href='https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php' target='_blank'> Crop Data Layer</a>"),
+                                                                                  br(),
+                                                                                  HTML("Land use data provided by the USGS 2016 <a href='https://www.usgs.gov/centers/eros/science/national-land-cover-database?qt-science_center_objects=0#qt-science_center_objects' target='_blank'> National Land Cover Dataset</a>"),
+                                                                                  br()
+                                                                         ),
+                                                                         tabPanel("Detection Data",
+                                                                                  dataTableOutput("subPlotData"))
+                                                                       ),
+                                                                     leafletOutput('detectionMap', width = '100%'), br(),
+                                                                     fluidRow(
+                                                                       column(2, checkboxInput('opaqueBasins', 'Opaque Basins?', value = FALSE)),
+                                                                       column(2, div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
                                                                                      a("NLCD Legend", href="https://www.mrlc.gov/data/legends/national-land-cover-database-2019-nlcd2019-legend", target="_blank"))
                                                                        ),
-                                                                       column(1,div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
-                                                                                    a("Crop Legend", href="https://www.nass.usda.gov/Research_and_Science/Cropland/docs/US_2020_CDL_legend.jpg", target="_blank"))
-                                                                       ),
-                                                                       column(1, offset=1, div(type='text/css', style="float: right; line-height: 65px; vertical-align: bottom;",
+                                                                       # column(1,div(type='text/css', style= "line-height: 65px; vertical-align: middle; align: center;", 
+                                                                       #              a("Crop Legend", href="https://www.nass.usda.gov/Research_and_Science/Cropland/docs/US_2020_CDL_legend.jpg", target="_blank"))
+                                                                       # ),
+                                                                       column(2, offset=1, div(type='text/css', style="float: right; line-height: 65px; vertical-align: bottom;",
                                                                                                actionButton('expand', "Expand"), hidden(actionButton('collapse', "Collapse")))
                                                                        )
-                                                                     ),
-                                                                     leafletOutput('detectionMap', width = '100%'), br(),
-                                                                     HTML("<i>click on an individual station, basin, or detection to view</i>"),
-                                                                     tabsetPanel(
-                                                                       tabPanel("Detection Plot",
-                                                                                plotlyOutput('subPlot'),
-                                                                                dataTableOutput("subPlotData")
-                                                                       ),
-                                                                       tabPanel("Upstream Land Use",
-                                                                                fluidRow(column(7,plotlyOutput("cdlPlot", height = '500px')),
-                                                                                         column(5, plotlyOutput('landUsePlot', height = '500px'))),
-                                                                                br(),
-                                                                                HTML("Crop data provided by the US Department of Agriculture 2017 <a href='https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php' target='_blank'> Crop Data Layer</a>"),
-                                                                                br(),
-                                                                                HTML("Land use data provided by the USGS 2016 <a href='https://www.usgs.gov/centers/eros/science/national-land-cover-database?qt-science_center_objects=0#qt-science_center_objects' target='_blank'> National Land Cover Dataset</a>"),
-                                                                                br()
-                                                                       )
-                                                                     )
+                                                                     ), br()
                                                            )
                                                   )
                                       )
@@ -345,7 +364,7 @@ fluidPage(
              
              #### Navbar Panel 2 - UI for reference data to help users navigate the application ####
              
-             tabPanel(icon=icon("book"), "Reference", value = "e",
+             tabPanel(icon=icon("book"), HTML("Reference</a></li><li><a href=\"PSPAppTutorial.html\" target=\"_blank\">User Guide"), value = "e",
                       mainPanel(width = 20,
                                 tabsetPanel(
                                   tabPanel("Glossary of Terms",
@@ -368,18 +387,19 @@ fluidPage(
                                   # )
                                 )
                       )
-             ),
+             )
+             # ,
              
              #### User Guide link on Navbar Panel ####
              
-             text = shiny::HTML("<a href='PSPAppTutorial.html' target='_blank'>User Guide</a>")
+             # tabPanel(HTML("tab2)a(href='PSPAppTutorial.html', target='_blank', "User Guide"))
   )
 )
 }
 
 #### ui input ####
 ui <- tagList(useShinyjs(),
-              useShinyalert(),
+              # useShinyalert(),
               uiOutput("page"),
               uiOutput("modals"),
               # uiOutput("color"),
@@ -469,10 +489,17 @@ server <- function(input, output, session) {
   
   bsnSelect <- reactive({bsns[bsns@data$PSP_Name %in% Basin1(),]})
   
-  StationIDs <- reactive(unique(filter(AllData_NoVoid, Project %in% Basin1(),
+  StationIDs <- reactive(unique(filter(AllData_NoVoid, 
+                                       Project %in% Basin1(),
                                        Sampling_Date >= input$date_range[1],
                                        Sampling_Date <= input$date_range[2])$Station_Description))
   stnSelect <- reactive({stns[stns@data$StationDes %in% StationIDs(),]})
+  wsSelect <- reactive({stn_ws[stn_ws@data$Station %in% stns[stns@data$StationDes %in% StationIDs(),]@data$MLocID,]})
+  
+  Pollutants <- reactive(unique(filter(AllData_NoVoid, 
+                                       Project %in% Basin1(),
+                                       Sampling_Date >= input$date_range[1],
+                                       Sampling_Date <= input$date_range[2])$Analyte))
   # %>% unite(ID_Des, c(Station_ID, Station_Description), remove=TRUE, sep = " - "))
   
   BasinName <- reactive(
@@ -537,21 +564,35 @@ server <- function(input, output, session) {
                       Max_Result = max(Result.ug.l, na.rm = TRUE)
     ))
   })
-  
-  observeEvent(input$date_range, ({
 
-  }), ignoreInit = TRUE)
-  
-  #Filter the station choices by the basin selected in the sidebar
+  #Filter the station choices by the basin or date selected in the sidebar
   observeEvent(input$Basin, ({
     updateSelectInput(session, inputId = 'Station', label = "StationID", choices = c('All', sort(StationIDs())))
     updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
     updateSelectInput(session, inputId = 'custom_station', label = 'Station ID', choices = c('All', sort(StationIDs())))
+    updateSelectInput(session, inputId = 'Analyte', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+    updateSelectInput(session, inputId = 'Analyte2', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+    updateSelectInput(session, inputId = 'Analyte4', label = 'Analyte', choices = c(POCs, sort(Pollutants())))
   }), ignoreInit = TRUE)
+  
+  observeEvent(input$date_range, ({
+    updateSelectInput(session, inputId = 'Station', label = "StationID", choices = c('All', sort(StationIDs())))
+    updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
+    updateSelectInput(session, inputId = 'custom_station', label = 'Station ID', choices = c('All', sort(StationIDs())))
+    updateSelectInput(session, inputId = 'Analyte', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+    updateSelectInput(session, inputId = 'Analyte2', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+    updateSelectInput(session, inputId = 'Analyte4', label = 'Analyte', choices = c(POCs, sort(Pollutants())))
+    }), ignoreInit = TRUE)
   
   #### All Analytes tab ####
   
-  output$tab1Title <- renderText(paste0(BasinName(), " ", input$date_range[1], " to ", input$date_range[2]))
+  output$tab1Title <- renderText(paste0(BasinName(), " ", 
+                                        lubridate::month(input$date_range[1], label = T), " ",
+                                        lubridate::day(input$date_range[1]), " ",
+                                        lubridate::year(input$date_range[1]), " to ", 
+                                        lubridate::month(input$date_range[2], label = T), " ",
+                                        lubridate::day(input$date_range[2]), " ",
+                                        lubridate::year(input$date_range[2])))
   
   ### Format data ###
   tab1Data <- reactive({
@@ -575,7 +616,7 @@ server <- function(input, output, session) {
                        Per100_ = round((sum(Over_AQL)/sum(N_Detects))*DetectionFreq, 2),
                        NoBench = ifelse(is.na(sum(AQL_Value)), DetectionFreq, 0),
                        Per50_ = Per50_100 + Per100_,
-                       AQL_Ratio = round(max(AQL.Ratio, na.rm = TRUE), 2),
+                       AQL_Ratio = if_else(is.infinite(max(AQL.Ratio, na.rm = TRUE)), NaN, round(max(AQL.Ratio, na.rm = TRUE), 2)),
                        ALR_1 = 1
       ))
     t[,"Analyte"] <- wrap_labels(labels = t$Analyte, n_char = 25)
@@ -604,13 +645,16 @@ server <- function(input, output, session) {
              xaxis = list(title="",
                           tickangle = -45),
              yaxis = list(side = "left", title = "<b>Detection Frequency (%)</b>", showline = TRUE,
-                          ticks = "outside"),
-             margin = list(
+                          ticks = "outside")
+             # ,
+             # legend = list(orientation = "h"),
+             # margin = list(t = 150
                # r = 80,
                            # l = 20,
                            # t = 80
                            # , b = 100
-             )) %>% plotConfig()
+             # )
+    ) %>% plotConfig()
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
   })
@@ -640,10 +684,13 @@ server <- function(input, output, session) {
              xaxis = list(title = '',
                           tickvals= ~Analyte,
                           ticktext= ~Analyte,
-                          tickangle= -45),
-             margin = list(t = 100,
-                           b = 180,
-                           l = 130)) %>% plotConfig()
+                          tickangle= -45)
+             # ,
+             # legend = list(orientation = "h"),
+             # margin = list(t = 150,
+             #               b = 180,
+             #               l = 130)
+             ) %>% plotConfig()
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
   })
@@ -690,12 +737,16 @@ server <- function(input, output, session) {
           showline = TRUE,
           ticks = "outside"),
         hovermode = 'x',
-        legend = list(x = 0.25, y = 1.1, orientation = "h", tracegroupgap = 10),
-        margin = list(r = 80,
-                      l = 80,
-                      t = 100,
-                      b = 180,
-                      pad = 0)
+        legend = list(
+          # x = 0.25, y = 1.1, 
+                      # orientation = "h", 
+                      tracegroupgap = 10)
+        # ,
+        # margin = list(r = 80,
+        #               l = 80,
+        #               t = 150,
+        #               b = 180,
+        #               pad = 0)
       ) %>% plotConfig()
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
@@ -772,7 +823,7 @@ server <- function(input, output, session) {
         Average_Det = ifelse(!is.na(mean(Result.ug.l, na.rm = TRUE)), mean(Result.ug.l, na.rm = TRUE), 0),
         Maximum = ifelse(is.infinite(max(Result.ug.l, na.rm = TRUE)), NA, max(Result.ug.l, na.rm = TRUE)),
         Median = median(Result.ug.l, na.rm = TRUE),
-        Error_Y = Maximum - Average,
+        Error_Y = Maximum - Average_Det,
         Error_Y_Med = Maximum - Median,
         Criteria = ifelse(!is.na(min(min.AQL.value)), min(min.AQL.value, na.rm = TRUE), NA),
         Per_Over_Bench = ((sum(AQL_Ratio > 1, na.rm = TRUE))/(sum(Result.ug.l > 0, na.rm = TRUE)))*100,
@@ -897,7 +948,7 @@ server <- function(input, output, session) {
   observeEvent(input$opaqueBasins, {
     if(input$opaqueBasins){
       output$detectionMap <- renderLeaflet({
-        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect()) %>% 
+        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect(), wsSelect()) %>% 
           addPolygons(data = bsnSelect(),
                       group = 'Basins',
                       stroke = TRUE,
@@ -929,7 +980,7 @@ server <- function(input, output, session) {
       }) 
     } else {
       output$detectionMap <- renderLeaflet({
-        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect()) %>% registerPlugin(easyPrintPlugin) %>% onRender(
+        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect(), wsSelect()) %>% registerPlugin(easyPrintPlugin) %>% onRender(
           jsCode = "function(el, x) {
               L.easyPrint({
                   title: 'Download Map (CDL layer not available for download)',
@@ -967,7 +1018,7 @@ $("#detectionMap").height(400);
   
   # Filter data and display plots based on the user clicking different markers/basins/detections ####
   
-  observeEvent(input$detectionMap_marker_click,{
+  observeEvent(input$detectionMap_marker_click, {
     bsnID <- reactive({NULL})
     clickData <- reactive({
       input$detectionMap_marker_click$id
@@ -976,11 +1027,12 @@ $("#detectionMap").height(400);
       mapData() %>% filter(Station_Description %in% clickData())
     })
     landUseData <- reactive({
-      filter(LandUse, Station_De %in% clickData(), Year == 2016) %>%
-        melt(id.vars=c('MLocID', 'Station_De', 'Basin', 'Year'),
-             measure.vars=c('PerUrbanWs', 'PerForestWs', 'PerAgWs', 'PerOtherWs'),
-             variable.name="variable",
-             value.name="value")
+      filter(LandUse, Station_Description %in% clickData()) 
+      # %>%
+        # melt(id.vars=c('MLocID', 'Station_De', 'Basin', 'Year'),
+        #      measure.vars=c('PerUrbanWs', 'PerForestWs', 'PerAgWs', 'PerOtherWs'),
+        #      variable.name="variable",
+        #      value.name="value")
     })
     # output$clickText <- renderPrint({
     #   clickData()
@@ -1000,8 +1052,10 @@ $("#detectionMap").height(400);
                shapes=list(type="line", line=list(dash='dash',color = "red", width=1),
                            x0= min(subPlotData()$Sampling_Date),
                            x1= max(subPlotData()$Sampling_Date),
-                           y0=1, y1=1),
-               margin = list(t=80)
+                           y0=1, y1=1)
+               # ,
+               # legend = list(orientation = "h"),
+               # margin = list(t=150)
                # xaxis = list(type = 'date', range  = c(min(subPlotData()$Sampling_Date),
                #                                        max(subPlotData()$Sampling_Date)))
         ) %>%
@@ -1009,21 +1063,22 @@ $("#detectionMap").height(400);
     })
     
     output$landUsePlot <- renderPlotly({
-      plot_ly(landUseData(), values = ~value, labels = c('<b>Urban', '<b>Forest', '<b>Agriculture', '<b>Other'),
-              type = "pie", hole = 0.7, textinfo = "label+percent", hoverinfo = "label+percent", textposition = "outside",
+      plot_ly(landUseData(), values = ~Percent, 
+              labels = c("<b>Agricultural", "<b>Forested", "<b>Urban", "<b>Ag or Forested", "<b>Other"),
+              type = "pie", hole = 0.6, textinfo = "label+percent", hoverinfo = "label+percent", textposition = "outside",
               marker = list(colors = (c('#C82E0D', '#52994C', '#D4A506', '#75919A'))),
-              pull = 0.05
+              pull = 0.02
       ) %>%
-        layout(title = "<b>NLCD 2016 Land Use",
+        layout(title = "<b>NLCD 2019 Land Use",
                margin=list(t=70, b=50)) %>% 
         plotly::config(displayModeBar='hover', editable=TRUE, collaborate=FALSE, displaylogo=FALSE)
     })
-    output$cdlPlot <- renderPlotly({
-      validate(need(!is.null(bsnID()), "Click on a basin to view crop breakdown"))
-      plot_ly(cdlData()) %>% add_bars(x=~Crop, y=~Percent) %>% 
-        layout(title = paste("<b>USDA Crop Data Layer 2017<br>", clickData()),
-               margin = list(b = 100))
-    })
+    # output$cdlPlot <- renderPlotly({
+    #   validate(need(!is.null(bsnID()), "Click on a basin to view estimated crop breakdown"))
+    #   plot_ly(cdlData()) %>% add_bars(x=~Crop, y=~Percent) %>% 
+    #     layout(title = paste("<b>USDA Crop Data Layer 2017<br>", clickData()),
+    #            margin = list(b = 100))
+    # })
     output$subPlotData <- renderDataTable({
       validate(need(clickData(), "Click on a station or basin to view results"))
       subPlotData()[,c("Analyte", "AQL_Ratio", "Sampling_Date", "Station_Description", "Project")]
@@ -1046,11 +1101,11 @@ $("#detectionMap").height(400);
              variable.name="variable",
              value.name="value")
     })
-    cdlData <- reactive({
-      bsnCrops %>% select(-starts_with("total")) %>% 
-        melt(id.vars = "ID", variable.name = "Crop", value.name = "Percent", variable.factor=FALSE) %>% 
-        filter(ID %in% clickData(), !is.na(Percent))
-    })
+    # cdlData <- reactive({
+    #   bsnCrops %>% select(-starts_with("total")) %>% 
+    #     melt(id.vars = "ID", variable.name = "Crop", value.name = "Percent", variable.factor=FALSE) %>% 
+    #     filter(ID %in% clickData(), !is.na(Percent))
+    # })
     
     output$subPlot <- renderPlotly({
       validate(need(clickData(), "Click on a station or basin to view results"))
@@ -1066,8 +1121,10 @@ $("#detectionMap").height(400);
                shapes=list(type="line", line=list(dash='dash',color = "red", width=1),
                            x0= min(subPlotData()$Sampling_Date),
                            x1= max(subPlotData()$Sampling_Date),
-                           y0=1, y1=1),
-               margin = list(t=80)
+                           y0=1, y1=1)
+               # ,
+               # legend = list(orientation = "h"),
+               # margin = list(t=150)
                # xaxis = list(type = 'date', range  = c(min(subPlotData()$Sampling_Date),
                #                                        max(subPlotData()$Sampling_Date)))
         ) %>%
@@ -1085,15 +1142,15 @@ $("#detectionMap").height(400);
         plotly::config(displayModeBar='hover', editable=TRUE, collaborate=FALSE, displaylogo=FALSE)
     })
     
-    output$cdlPlot <- renderPlotly({
-      validate(need(!is.null(bsnID()), "Click on a basin to view crop breakdown"))
-      plot_ly(cdlData(), x=~Crop, y=~Percent, type="bar") %>% 
-        layout(title = paste("<b>USDA Crop Data Layer 2017<br>", clickData()),
-               xaxis = list(title="<b>Crop Category",
-                            tickangle= -45),
-               yaxis = list(title="<b>Percent of Area"),
-               margin = list(t=100, b = 120))
-    })
+    # output$cdlPlot <- renderPlotly({
+    #   validate(need(!is.null(bsnID()), "Click on a basin to view crop breakdown"))
+    #   plot_ly(cdlData(), x=~Crop, y=~Percent, type="bar") %>% 
+    #     layout(title = paste("<b>USDA Crop Data Layer 2017<br>", clickData()),
+    #            xaxis = list(title="<b>Estimated Crop Category",
+    #                         tickangle= -45),
+    #            yaxis = list(title="<b>Percent of Area"),
+    #            margin = list(t=100, b = 120))
+    # })
     
     output$subPlotData <- renderDataTable({
       validate(need(!is.null(input$detectionMap_shape_click$id), "Click on a station or basin to view results"))
@@ -1108,48 +1165,47 @@ $("#detectionMap").height(400);
     input$navTab
   }, 
   {if(input$Tab != "detectionMap" | input$navTab != "dataSum") ({
-    hideElement("popup")
+    # hideElement("popup")
   }) else{
-    showElement("popup")
+    # showElement("popup")
     removeModal()
-    shinyalert(title = 'Important info about the Detection Map Crop Data Layer',
-               text = "This layer shows estimated crop distribution information on a national scale and is 
-               not intended to show information specific to individual plots. The mapped information will 
-               improve over time as additional surveys become available. This map is not intended for 
-               use in identifying specific crops or land uses at this time.",
-               type = 'info', closeOnEsc = TRUE, showConfirmButton = TRUE, html = TRUE)
+    shinyalert(title = 'Important info about the Detection Map',
+               text = "This map displays sampling data with spatial context and is intended to aid partners with program implementation. Please note that station locations represent the location at which the sample was taken and <b>DOES NOT</b> locate the source of the pesticides. Detections are influenced by the entire upstream watershed (seen in the 'Station upstream watersheds' layer) and this tool is not intended to determine a singular source of contamination.",
+               type = 'info', closeOnEsc = FALSE, showConfirmButton = TRUE, confirmButtonText = "I Understand", 
+               html = TRUE, confirmButtonCol = "#19A1FF")
+    print("Check")
   }
   })
   
-  output$popup <- renderUI(absolutePanel(top = 300, right = 70, width = 250, height = 100, draggable = TRUE, uiOutput("cdlPop")))
+  # output$popup <- renderUI(absolutePanel(top = 300, right = 70, width = 250, height = 100, draggable = TRUE, uiOutput("cdlPop")))
   
   httr::set_config(httr::config( ssl_verifypeer = 0L ) )
   
   # Add functions for showing detection data on click for various layers
-  observeEvent(input$detectionMap_click,{
-    showElement(id="cdlTable")
-    pnt <- reactive(LongLatToUTM(input$detectionMap_click$lng,input$detectionMap_click$lat))
-    cdlData <- reactive(as.character(xmlTreeParse(content(GET("http://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLValue?",
-                                                              query=list(year=2020,
-                                                                         x=pnt()$X,
-                                                                         y=pnt()$Y))))$doc$children$GetCDLValueResponse[1]$Result[1]$text)[6])
-    cdlCat <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][4],'".*"'))[1])
-    cdlCol <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][5],'".*"'))[1])
-    output$cdlTable <- renderTable(data.frame(CDL.Category = cdlCat(),
-                                              Color.Value = cdlCol(),
-                                              Map.Layer = "Crops (CDL 2020)"))
-    output$cdlPanel <- renderText(paste('<span style="font-weight: normal;">', cdlCat(), '</span>'))
+  # observeEvent(input$detectionMap_click,{
+    # showElement(id="cdlTable")
+    # pnt <- reactive(LongLatToUTM(input$detectionMap_click$lng,input$detectionMap_click$lat))
+    # cdlData <- reactive(as.character(xmlTreeParse(content(GET("http://nassgeodata.gmu.edu/axis2/services/CDLService/GetCDLValue?",
+    #                                                           query=list(year=2020,
+    #                                                                      x=pnt()$X,
+    #                                                                      y=pnt()$Y))))$doc$children$GetCDLValueResponse[1]$Result[1]$text)[6])
+    # cdlCat <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][4],'".*"'))[1])
+    # cdlCol <- reactive(gsub('"',"",str_extract(strsplit(cdlData(), ", ")[[1]][5],'".*"'))[1])
+    # output$cdlTable <- renderTable(data.frame(CDL.Category = cdlCat(),
+    #                                           Color.Value = cdlCol(),
+    #                                           Map.Layer = "Crops (CDL 2020)"))
+    # output$cdlPanel <- renderText(paste('<span style="font-weight: normal;">', cdlCat(), '</span>'))
     # output$color <- renderUI(tags$style(type = "text/css",
     #                                     paste("#cdlTable {border-style: solid;
     #                                           border-color: ", cdlCol(), ";
     #                                           border-width: 8px; width: 600px; height: 80px;}"))
     #                          )
-    output$cdlPop <- renderUI(div(style=paste("border-style: solid; border-color:", cdlCol(), "; text-align: center; font-weight: bold;
-                                                         border-width: 8px; background-color: #FFFFFF; border-radius: 25px; z-index: 1001; position: relative;"),
-                                  "CDL 2020 Crop Category",
-                                  htmlOutput("cdlPanel")))
-    
-  })
+  #   output$cdlPop <- renderUI(div(style=paste("border-style: solid; border-color:", cdlCol(), "; text-align: center; font-weight: bold;
+  #                                                        border-width: 8px; background-color: #FFFFFF; border-radius: 25px; z-index: 1001; position: relative;"),
+  #                                 "CDL 2020 Estimated Crop Category",
+  #                                 htmlOutput("cdlPanel")))
+  #   
+  # })
   
   #### Data for 'Reference' tab ####
   
@@ -1206,14 +1262,14 @@ $("#detectionMap").height(400);
                               color = "black"),
                 x = ~Year,
                 y = ~DetectionFreq,
-                name = "Detection Frequency",
+                name = "Detection Frequency (%)",
                 yaxis = "y2"
       ) %>%
       add_trace(type = "scatter",
                 mode = "lines",
                 x = ~Year,
                 y = ~Criteria,
-                name = paste("WQ Criteria = ", min(data$Criteria)),
+                name = paste("WQ Benchmark = ", min(data$Criteria)),
                 line = list(color = '#CC0000',
                             dash = 10)
       ) %>%
@@ -1227,19 +1283,36 @@ $("#detectionMap").height(400);
         ),
         yaxis2 = list(overlaying = "y",
                       side = "right",
-                      title = "<b>Detection Frequency</b>",
+                      title = "<b>Detection Frequency (%)</b>",
                       mirror = TRUE,
                       showgrid = FALSE,
                       rangemode = 'tozero',
                       range = c(0, 105)),
         xaxis = list(title = "",
                      tickvals= ~Year,
-                     ticktext= ~Year),
-        hovermode = 'x',
-        margin = list(t = 120),
-        legend = list(y = 1.1,
-                      x = 1.05)
-      ) %>% plotConfig()
+                     ticktext= ~Year,
+                     range = ~c(Year[1]-0.5, max(Year, na.rm=T)+0.5))
+        # ,
+        # hovermode = 'x',
+        # margin = list(t = 150),
+        # legend = list(y = 1.1,
+        #               x = 1.05)
+      ) %>% 
+      layout(p, 
+             titlefont = list(size=20),
+             xaxis = list(titlefont=list(size=14),
+                          tickfont=list(size=13)),
+             yaxis = list(titlefont=list(size=14),
+                          tickfont=list(size=12)),
+             legend = list(font=list(size=14),
+                           orientation = 'h',
+                           # x = 0.25,
+                           y = 1.12),
+             margin = list(t = 200,
+                           b = 150,
+                           l = 80,
+                           r = 80)) %>% 
+      plotly::config(displayModeBar='hover', editable=TRUE, showTips=TRUE, showAxisDragHandles=TRUE, showAxisRangeEntryBoxes=TRUE, displaylogo=FALSE)
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
   })
@@ -1274,7 +1347,8 @@ $("#detectionMap").height(400);
                 name=paste0("Benchmark: ", min(tab2Data2()$min.AQL.value), " ug/L"),
                 line=list(color='red',
                           dash='dash')) %>% 
-      layout(margin = list(t=100),
+      layout(
+        # margin = list(t=150),
              xaxis=list(title="Sampling Date"),
              yaxis=list(title="Concentration (ug/L)")
       ) %>% plotConfig()
@@ -1319,10 +1393,10 @@ $("#detectionMap").height(400);
                 width = 0.75,
                 color = I('grey')) %>% 
       layout(
-        margin = list(t=100),
+        # margin = list(t=150),
         barmode = 'stack',
         hovermode = 'x',
-        yaxis = list(title = '<b>Detection Frequency</b>',
+        yaxis = list(title = '<b>Detection Frequency (%)</b>',
                      range = c(0,100)),
         xaxis = list(title = '',
                      tickvals= ~Year,
@@ -1349,15 +1423,44 @@ $("#detectionMap").height(400);
     )
     p <- plot_ly(tab3Data2()) %>% 
       add_markers(x=~Sampling_Date, y=~AQL_Ratio, symbol=~Analyte, symbols=~symbolCodes, color=~Station_Description,
-                  marker=list(size=9)) %>% 
-      layout(shapes=list(type='line', x0= min(tab3Data2()$Sampling_Date), x1= max(tab3Data2()$Sampling_Date), y0=1, y1=1,
+                  marker=list(size=9), showlegend = TRUE) %>% 
+      # layout(shapes=list(type='line', x0= min(tab3Data2()$Sampling_Date), x1= max(tab3Data2()$Sampling_Date), y0=1, y1=1,
+      #                    line=list(dash='dash', width=1, color='red'), showlegend = TRUE),
+      #        xaxis = list(title = "<b>Sampling Date"),
+      #        yaxis = list(title = "<b>Aquatic Life Ratio")
+      #        # ,
+      #        # margin = list(t = 150,
+      #        #               b =120)
+      # ) %>% 
+      layout(
+        # p,
+             shapes=list(type='line', x0= min(tab3Data2()$Sampling_Date), x1= max(tab3Data2()$Sampling_Date), y0=1, y1=1,
                          line=list(dash='dash', width=1, color='red'), showlegend = TRUE),
              xaxis = list(title = "<b>Sampling Date"),
              yaxis = list(title = "<b>Aquatic Life Ratio"),
-             margin = list(t = 60,
-                           b =120)
-      ) %>% 
-      plotConfig()
+             titlefont = list(size=20),
+             xaxis = list(titlefont=list(size=14),
+                          tickfont=list(size=13)),
+             yaxis = list(titlefont=list(size=14),
+                          tickfont=list(size=12))
+             ,
+             legend = list(font=list(size=12)
+                           ,
+                           orientation = 'h'
+                           ,
+                           # x = 1.1
+                           # xanchor = "left"
+                           y = -0.2
+                           )
+             ,
+             margin = list(t = 150,
+                           b = 80,
+                           l = 80
+                           # ,
+                           # r = 200
+                           )
+             ) %>% 
+      plotly::config(displayModeBar='hover', editable=TRUE, showTips=TRUE, showAxisDragHandles=TRUE, showAxisRangeEntryBoxes=TRUE, displaylogo=FALSE)
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
   })
@@ -1517,7 +1620,8 @@ $("#detectionMap").height(400);
                   legendgroup = 'y2',
                   yaxis = "y2")
     }
-    p <- p %>% layout(legend = list(x = 1.1),
+    p <- p %>% layout(
+      # legend = list(x = 1.1),
                       xaxis = list(title = gsub("_", " ", input$x_var)), 
                       yaxis = list(title = gsub("_", " ", input$y_var),
                                    rangemode = 'tozero'), 
@@ -1528,8 +1632,10 @@ $("#detectionMap").height(400);
                                     mirror = TRUE,
                                     showgrid = FALSE,
                                     # showline = TRUE,
-                                    rangemode = 'tozero'),
-                      margin = list(r = 60, l = 60, t = 60)) %>% plotConfig()
+                                    rangemode = 'tozero')
+                      # ,
+                      # margin = list(r = 60, l = 60, t = 60)
+                      ) %>% plotConfig()
     p$x$config$modeBarButtonsToAdd[1] <- toImage2
     p
   })
@@ -1546,30 +1652,48 @@ $("#detectionMap").height(400);
   #### Create table for tab1 ####
   
   output$results <- renderDataTable({
-    tab1DataTable <- tab1Data1()[order(-tab1Data1()$DetectionFreq), c(1:12)]
-    plyr:::rename(tab1DataTable, c("DetectionFreq" = "Detection Frequency",
-                              "Bench" = "Aquatic Life Benchmark (ug/L)",
-                              "Per100_" = "Over benchmark (%)",
-                              "Per50_100" = "50-100% (%)",
-                              "Per10_50" = "10-50% (%)",
-                              "Per_10" = "<10% of benchmark (%)", 
-                              "NoBench" = "No benchmark (%)",
-                              "Per50_" = ">50% of benchmark (%)",
-                              "AQL_Ratio" = "ALR"))
+    tab1DataTable <- tab1Data1()[order(-tab1Data1()$DetectionFreq), c(1:5, 10, 6:9, 12)]
+    # tab1DataTable[tab1DataTable == ""] <-  NA
+    tab1DataTable[c(4, 6:11)] <- sapply(tab1DataTable[c(4, 6:11)], prettyNum, digits = 2)
+    tab1DataTable$Bench <- as.character(tab1DataTable$Bench)
+    # tab1DataTable$AQL_Ratio <- if_else(!is.infinite(tab1DataTable$AQL_Ratio), tab1DataTable$AQL_Ratio, NaN)
+    plyr:::rename(tab1DataTable, c("NSamples" = "Number of Samples",
+                                   "NDetects" = "Number of Detections",
+                                   "DetectionFreq" = "Detection Frequency (%)",
+                                   "Bench" = "Aquatic Life Benchmark (ug/L)",
+                                   "Per100_" = "Over benchmark (%)",
+                                   "Per50_100" = "50-100% of benchmark (%)",
+                                   "Per10_50" = "10-50% of benchmark (%)",
+                                   "Per_10" = "Less than 10% of benchmark (%)", 
+                                   "NoBench" = "No benchmark (%)",
+                                   # "Per50_" = "Greater than 50% of benchmark (%)",
+                                   "AQL_Ratio" = "Maximum ALR"))
   })
   
   #### Create table for tab2 ####
   
   output$tab2results <- renderDataTable({
-    tab2DetFreqData()
-    plyr:::rename(tab2DetFreqData(), c("DetectionFreq" = "Detection Frequency",
-                                       "Bench" = "Aquatic Life Benchmark (ug/L)",
-                                       "Per100_" = "Over benchmark (%)",
-                                       "Per50_100" = "50-100% (%)",
-                                       "Per10_50" = "10-50% (%)",
-                                       "Per_10" = "<10% of benchmark (%)", 
-                                       "NoBench" = "No benchmark (%)",
-                                       "Per50_" = ">50% of benchmark (%)"))
+    tab2DetFreqData.df <- tab2DetFreqData()
+    tab2DetFreqData.df$Bench <- as.character(tab2DetFreqData.df$Bench)
+    # tab2DetFreqData.df[tab2DetFreqData.df == ""] <-  NA
+    tab2DetFreqData.df[c(5,7:11)] <- sapply(tab2DetFreqData.df[c(5,7:11)], prettyNum, digits = 2)
+    # tab2DetFreqData$AQL_Ratio <- if_else(!is.infinite(tab2DetFreqData$AQL_Ratio), 
+    #                                      tab2DetFreqData$AQL_Ratio,
+    #                                      NULL)
+    dplyr:::select(tab2DetFreqData.df, c(Analyte,
+                                        Year,
+                                        `Number of Samples` = NSamples,
+                                        `Number of Detections` = NDetects,
+                                        `Detection Frequency` = DetectionFreq,
+                                        `Aquatic Life Benchmark (ug/L)` = Bench, 
+                                        `No benchmark (%)` = NoBench,
+                                        `Less than 10% of benchmark (%)` = Per_10,
+                                        `10-50% of benchmark (%)` = Per10_50,
+                                        `50-100% of benchmark (%)` = Per50_100,
+                                        `Over benchmark (%)` = Per100_
+                                       # ,
+                                       # "Per50_" = "Greater than 50% of benchmark (%)"
+                                       ))
   }
   # , striped = TRUE
   )
@@ -1578,14 +1702,23 @@ $("#detectionMap").height(400);
   
   output$tab3results <- renderDataTable({
     tab3Data <- tab3Data()[order(-tab3Data()$DetectionFreq),]
-    plyr:::rename(tab3Data(), c("DetectionFreq" = "Detection Frequency",
-                                "Bench" = "Aquatic Life Benchmark (ug/L)",
-                                "Per100_" = "Over benchmark (%)",
-                                "Per50_100" = "50-100% (%)",
-                                "Per10_50" = "10-50% (%)",
-                                "Per_10" = "<10% of benchmark (%)", 
-                                "NoBench" = "No benchmark (%)",
-                                "Per50_" = ">50% of benchmark (%)"))
+    tab3Data$Bench <- as.character(tab3Data$Bench)
+    # tab3Data[tab3Data == ""] <-  NA
+    tab3Data[c(4,6:11)] <- sapply(tab3Data[c(4,6:11)], prettyNum, digits = 2)
+    dplyr:::select(tab3Data, c(Analyte,
+                               Year,
+                               `Number of Samples` = NSamples,
+                               `Number of Detections` = NDetects,
+                               `Detection Frequency` = DetectionFreq,
+                               `Aquatic Life Benchmark (ug/L)` = Bench, 
+                               `No benchmark (%)` = NoBench,
+                               `Less than 10% of benchmark (%)` = Per_10,
+                               `10-50% of benchmark (%)` = Per10_50,
+                               `50-100% of benchmark (%)` = Per50_100,
+                               `Over benchmark (%)` = Per100_
+                              # ,
+                              #   "Per50_" = ">50% of benchmark (%)"
+                              ))
   }
   # , striped = TRUE
   )
