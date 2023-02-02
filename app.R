@@ -1,6 +1,8 @@
 # This script produces a Shiny app that allows the user to manipulate and analyze the PSP data by choosing from a list of parameters (BETA)
 # Note: Some of the HTML functionality of this app requires that it be run in a browser (in dropdown menu of "Run App" button, select 'Run External')
 # Written by Colin Donald
+# setwd("//deqhq1/PSP/Rscripts/Repositories/PSP-Data-Viewer")
+# rsconnect::deployApp(appId = 63, account = "l_cdonald", upload = T, launch.browser = T)
 
 TS <- Sys.time()
 
@@ -323,24 +325,6 @@ fluidPage(
                                                                                           # , inline = TRUE
                                                                               ))
                                                                        ),
-                                                                       HTML("<i>click on an individual station, basin, or detection to view</i>"),
-                                                                       tabsetPanel(
-                                                                         tabPanel("Detection Plot",
-                                                                                  plotlyOutput('subPlot', height = '300px')
-                                                                         ),
-                                                                         tabPanel("Upstream Land Use",
-                                                                                  # fluidRow(
-                                                                                    # column(7,plotlyOutput("cdlPlot", height = '500px')),
-                                                                                    plotlyOutput('landUsePlot', height = '300px'),
-                                                                                  # br(),
-                                                                                  # HTML("Crop data provided by the US Department of Agriculture 2017 <a href='https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php' target='_blank'> Crop Data Layer</a>"),
-                                                                                  br(),
-                                                                                  HTML("Land use data provided by the USGS 2016 <a href='https://www.usgs.gov/centers/eros/science/national-land-cover-database?qt-science_center_objects=0#qt-science_center_objects' target='_blank'> National Land Cover Dataset</a>"),
-                                                                                  br()
-                                                                         ),
-                                                                         tabPanel("Detection Data",
-                                                                                  dataTableOutput("subPlotData"))
-                                                                       ),
                                                                      leafletOutput('detectionMap', width = '100%'), br(),
                                                                      fluidRow(
                                                                        column(2, checkboxInput('opaqueBasins', 'Opaque Basins?', value = FALSE)),
@@ -353,7 +337,26 @@ fluidPage(
                                                                        column(2, offset=1, div(type='text/css', style="float: right; line-height: 65px; vertical-align: bottom;",
                                                                                                actionButton('expand', "Expand"), hidden(actionButton('collapse', "Collapse")))
                                                                        )
-                                                                     ), br()
+                                                                     ),
+                                                                     HTML("<i>click on an individual station, basin, or detection to view</i>"),
+                                                                     tabsetPanel(
+                                                                       tabPanel("Detection Plot",
+                                                                                plotlyOutput('subPlot', height = '300px')
+                                                                       ),
+                                                                       tabPanel("Upstream Land Use",
+                                                                                # fluidRow(
+                                                                                # column(7,plotlyOutput("cdlPlot", height = '500px')),
+                                                                                plotlyOutput('landUsePlot', height = '300px'),
+                                                                                # br(),
+                                                                                # HTML("Crop data provided by the US Department of Agriculture 2017 <a href='https://www.nass.usda.gov/Research_and_Science/Cropland/SARS1a.php' target='_blank'> Crop Data Layer</a>"),
+                                                                                br(),
+                                                                                HTML("Land use data provided by the USGS 2016 <a href='https://www.usgs.gov/centers/eros/science/national-land-cover-database?qt-science_center_objects=0#qt-science_center_objects' target='_blank'> National Land Cover Dataset</a>"),
+                                                                                br()
+                                                                       ),
+                                                                       tabPanel("Detection Data",
+                                                                                dataTableOutput("subPlotData"))
+                                                                     ),
+                                                                     br()
                                                            )
                                                   )
                                       )
@@ -490,11 +493,13 @@ server <- function(input, output, session) {
   bsnSelect <- reactive({bsns[bsns@data$PSP_Name %in% Basin1(),]})
   
   StationIDs <- reactive(unique(filter(AllData_NoVoid, 
-                                       Project %in% Basin1(),
-                                       Sampling_Date >= input$date_range[1],
-                                       Sampling_Date <= input$date_range[2])$Station_Description))
+                                       Project %in% Basin1()
+                                       # ,
+                                       # Sampling_Date >= input$date_range[1],
+                                       # Sampling_Date <= input$date_range[2]
+                                       )$Station_Description))
   stnSelect <- reactive({stns[stns@data$StationDes %in% StationIDs(),]})
-  wsSelect <- reactive({stn_ws[stn_ws@data$Station %in% stns[stns@data$StationDes %in% StationIDs(),]@data$MLocID,]})
+  wsSelect <- reactive({stn_ws[stn_ws$Station %in% stns[stns@data$StationDes %in% StationIDs(),]@data$MLocID,]})
   
   Pollutants <- reactive(unique(filter(AllData_NoVoid, 
                                        Project %in% Basin1(),
@@ -523,7 +528,7 @@ server <- function(input, output, session) {
     suppressWarnings(data_filtered() %>%
     group_by(Analyte, Project, add=TRUE) %>%
     dplyr:::summarise(DetectFreq = sum(!is.na(Result.ug.l))/length(Result.ug.l),
-                      N_Samples = length(Analyte),
+                      N_Samples = n(),
                       N_Detects = sum(!is.na(Result.ug.l)),
                       AQL_Value = ifelse(!is.na(min(min.AQL.value)), min(min.AQL.value), NA),
                       AQL.Ratio = ifelse(is.infinite(max(AQL_Ratio, na.rm = TRUE)),NA, max(AQL_Ratio, na.rm = TRUE)),
@@ -576,12 +581,12 @@ server <- function(input, output, session) {
   }), ignoreInit = TRUE)
   
   observeEvent(input$date_range, ({
-    updateSelectInput(session, inputId = 'Station', label = "StationID", choices = c('All', sort(StationIDs())))
-    updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
-    updateSelectInput(session, inputId = 'custom_station', label = 'Station ID', choices = c('All', sort(StationIDs())))
-    updateSelectInput(session, inputId = 'Analyte', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
-    updateSelectInput(session, inputId = 'Analyte2', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
-    updateSelectInput(session, inputId = 'Analyte4', label = 'Analyte', choices = c(POCs, sort(Pollutants())))
+    # updateSelectInput(session, inputId = 'Station', label = "StationID", choices = c('All', sort(StationIDs())))
+    # updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
+    # updateSelectInput(session, inputId = 'custom_station', label = 'Station ID', choices = c('All', sort(StationIDs())))
+    # updateSelectInput(session, inputId = 'Analyte', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+    # updateSelectInput(session, inputId = 'Analyte2', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+    # updateSelectInput(session, inputId = 'Analyte4', label = 'Analyte', choices = c(POCs, sort(Pollutants())))
     }), ignoreInit = TRUE)
   
   #### All Analytes tab ####
@@ -943,12 +948,20 @@ server <- function(input, output, session) {
              Analyte %in% MapAnalyte())
   })
   
+  StationIDs_map <- reactive(unique(filter(AllData_NoVoid, 
+                                       Project %in% Basin1()
+                                       ,
+                                       Sampling_Date >= input$date_range[1],
+                                       Sampling_Date <= input$date_range[2]
+  )$Station_Description))
+  stnSelect_map <- reactive({stns[stns@data$StationDes %in% StationIDs_map(),]})
+  
   # Create detection map using function from BasinMapForApp.R
   
   observeEvent(input$opaqueBasins, {
     if(input$opaqueBasins){
       output$detectionMap <- renderLeaflet({
-        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect(), wsSelect()) %>% 
+        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect_map(), wsSelect()) %>% 
           addPolygons(data = bsnSelect(),
                       group = 'Basins',
                       stroke = TRUE,
@@ -980,7 +993,7 @@ server <- function(input, output, session) {
       }) 
     } else {
       output$detectionMap <- renderLeaflet({
-        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect(), wsSelect()) %>% registerPlugin(easyPrintPlugin) %>% onRender(
+        m <- detectMap(inputData=mapData(), bsnData=bsnSelect(), stnSelect_map(), wsSelect()) %>% registerPlugin(easyPrintPlugin) %>% onRender(
           jsCode = "function(el, x) {
               L.easyPrint({
                   title: 'Download Map (CDL layer not available for download)',
@@ -1064,7 +1077,8 @@ $("#detectionMap").height(400);
     
     output$landUsePlot <- renderPlotly({
       plot_ly(landUseData(), values = ~Percent, 
-              labels = c("<b>Agricultural", "<b>Forested", "<b>Urban", "<b>Ag or Forested", "<b>Other"),
+              labels = ~`Land Use`,
+              # c("<b>Agricultural", "<b>Forested", "<b>Urban", "<b>Ag or Forested", "<b>Other"),
               type = "pie", hole = 0.6, textinfo = "label+percent", hoverinfo = "label+percent", textposition = "outside",
               marker = list(colors = (c('#C82E0D', '#52994C', '#D4A506', '#75919A'))),
               pull = 0.02
@@ -1655,19 +1669,20 @@ $("#detectionMap").height(400);
     tab1DataTable <- tab1Data1()[order(-tab1Data1()$DetectionFreq), c(1:5, 10, 6:9, 12)]
     # tab1DataTable[tab1DataTable == ""] <-  NA
     tab1DataTable[c(4, 6:11)] <- sapply(tab1DataTable[c(4, 6:11)], prettyNum, digits = 2)
+    tab1DataTable[c(4, 6:11)] <- sapply(tab1DataTable[c(4, 6:11)], as.numeric)
     tab1DataTable$Bench <- as.character(tab1DataTable$Bench)
     # tab1DataTable$AQL_Ratio <- if_else(!is.infinite(tab1DataTable$AQL_Ratio), tab1DataTable$AQL_Ratio, NaN)
-    plyr:::rename(tab1DataTable, c("NSamples" = "Number of Samples",
-                                   "NDetects" = "Number of Detections",
-                                   "DetectionFreq" = "Detection Frequency (%)",
-                                   "Bench" = "Aquatic Life Benchmark (ug/L)",
-                                   "Per100_" = "Over benchmark (%)",
-                                   "Per50_100" = "50-100% of benchmark (%)",
-                                   "Per10_50" = "10-50% of benchmark (%)",
-                                   "Per_10" = "Less than 10% of benchmark (%)", 
-                                   "NoBench" = "No benchmark (%)",
-                                   # "Per50_" = "Greater than 50% of benchmark (%)",
-                                   "AQL_Ratio" = "Maximum ALR"))
+    dplyr:::rename(tab1DataTable, c("Number of Samples" = NSamples,
+                                   "Number of Detections" = NDetects,
+                                   "Detection Frequency (%)" = DetectionFreq,
+                                   "Aquatic Life Benchmark (ug/L)" = Bench,
+                                   "Over benchmark (%)" = Per100_,
+                                   "50-100% of benchmark (%)" = Per50_100,
+                                   "10-50% of benchmark (%)" = Per10_50,
+                                   "Less than 10% of benchmark (%)" = Per_10, 
+                                   "No benchmark (%)" = NoBench,
+                                   # Per50_ = "Greater than 50% of benchmark (%)",
+                                   "Maximum ALR" = AQL_Ratio))
   })
   
   #### Create table for tab2 ####

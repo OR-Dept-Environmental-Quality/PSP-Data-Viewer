@@ -3,6 +3,7 @@ library(leaflet.extras)
 # library(jpeg)
 library(sp)
 library(rgdal)
+library(sf)
 library(leafpop)
 library(ggplot2)
 
@@ -18,18 +19,34 @@ LongLatToUTM<-function(x,y){
 
 # Plot a default web map (brackets display the result) --------------------
 
+# setwd('//deqhq1/psp/Rscripts/Repositories/PSP-Data-Viewer/')
 
 bsns <- readOGR(dsn = 'appData/PSP_Locations',
-                layer = 'All_PSPBasins_06132022',
+                layer = 'All_PSPBasins_01242023',
                 verbose = FALSE)
 stns <- readOGR(dsn = 'appData/PSP_Locations',
                 layer = 'XYPSP_stations_AWQMS',
                 verbose = FALSE)
-stn_ws <- readOGR(dsn = 'appData/PSP_Locations',
-                layer = 'Station_Watersheds',
-                verbose = FALSE,
-                stringsAsFactors = FALSE)
+# stn_ws <- readOGR(dsn = 'appData/PSP_Locations',
+#                 layer = 'Station_Watersheds_nhd',
+#                 verbose = FALSE,
+#                 stringsAsFactors = FALSE)
+
+stn_ws <- sf::st_read(dsn = 'appData/PSP_Locations',
+                      layer = 'Station_Watersheds')
+
+stn_ws <- dplyr::rename(stn_ws, Station = Name)
+
+stn_ws <- sf::st_transform(stn_ws, crs = 4326)
+
 stn_landuse <- read.csv("appData/station_ws_landuse.csv", stringsAsFactors=FALSE)
+
+stn_landuse <- dplyr::rename(stn_landuse, 
+                      Station_ID = Name, 
+                      Station_Description = StationDes, 
+                      Project = psp_name, 
+                      Agricultural = Ag, 
+                      Forested = Forest)
 # stn_landuse <- stn_landuse %>% mutate(Agricultural = Cultivated.Crops + Hay.Pasture,
 #                                       Forested = Deciduous.Forest+ Evergreen.Forest+ Mixed.Forest,
 #                                       Urban = Developed..High.Intensity+ Developed..Low.Intensity+ 
@@ -38,16 +55,22 @@ stn_landuse <- read.csv("appData/station_ws_landuse.csv", stringsAsFactors=FALSE
 #                                       Other = Barren.Land+ Emergent.Herbaceous.Wetlands+ Open.Water+ Perennial.Snow.Ice+ 
 #                                                   Unclassified+ Woody.Wetlands,
 #                                       total = Agricultural + Forested + Urban + `Ag or Forest` + Other)
-stn_landuse <- stn_landuse[,c("Station_ID", "Station_Description", "Project", "Agricultural", "Forested", "Urban", "Ag.or.Forest", "Other")]
-colnames(stn_landuse) <- c("Station_ID", "Station_Description", "Project", "Agricultural", "Forested", "Urban", "Ag or Forested", "Other")
-stn_landuse <- stn_landuse %>% gather(key = "Land Use", value = "Percent", 4:8)
+stn_landuse <- stn_landuse[,c("Station_ID", "Station_Description", "Project", "Agricultural", "Forested", "Urban",
+                              # "Ag.or.Forest", 
+                              "Other")]
+colnames(stn_landuse) <- c("Station_ID", "Station_Description", "Project", "Agricultural", "Forested", "Urban",
+                           # "Ag or Forested", 
+                           "Other")
+stn_landuse <- stn_landuse %>% gather(key = "Land Use", value = "Percent", 4:7)
 stn_landuse$`Land Use` <- ordered(stn_landuse$`Land Use`, 
-                                    levels = c("Agricultural", "Forested", "Urban", "Ag or Forested", "Other"))
+                                    levels = c("Agricultural", "Forested", "Urban", 
+                                               # "Ag or Forested", 
+                                               "Other"))
 # stn_ws <- sp::merge(x=stn_ws, y=stn_landuse, by.x = "Station", by.y = "Name", all.x = TRUE)
 landuse_plot <- function(stn){
-  # p <- plot_ly(filter(stn_landuse, Name == stn)) %>% 
+  # p <- plot_ly(filter(stn_landuse, Station_ID == stn)) %>% 
   #   plotly::add_pie(values = ~Percent, labels = ~`Land Use`, textinfo = 'label+percent', showlegend = FALSE)
-  p <- ggplot(data = dplyr::filter(stn_landuse, Name == stn), aes(x = `Land Use`, y = Percent, fill = `Land Use`))+
+  p <- ggplot(data = dplyr::filter(stn_landuse, Station_ID == stn), aes(x = `Land Use`, y = Percent, fill = `Land Use`))+
                 geom_bar(stat = "identity")+
     ggplot2::ylim(c(0,100))+
     ggplot2::theme_classic()+
@@ -58,7 +81,7 @@ landuse_plot <- function(stn){
 
   return(p)
 }
-# plot_ly(data = filter(stn_landuse, Name == "10434-ORDEQ")) %>% 
+# plot_ly(data = filter(stn_landuse, Station_ID == "10434-ORDEQ")) %>% 
 #      plotly::add_pie(values = ~Percent, labels = ~`Land Use`, textinfo = 'label+percent', showlegend = FALSE)
 # stn_landuse_plots <- lapply(stn_ws@data$Station, landuse_plot)
 
@@ -184,7 +207,7 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData, ws) {
                 opacity = 1,
                 fillOpacity = 0.1,
                 smoothFactor = 0.5,
-                label = ws@data$Station,
+                label = ws$Station,
                 fillColor = topo.colors(13, alpha = NULL),
                 highlight = highlightOptions(
                   weight = 3,

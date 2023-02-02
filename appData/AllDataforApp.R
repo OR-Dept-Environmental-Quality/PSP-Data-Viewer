@@ -2,6 +2,7 @@
 AllData_NoVoid <- readRDS('appData/AllData_NoVoid.rds')
 AllData_NoVoid$Sampling_Date <- as.Date(AllData_NoVoid$Sampling_Date, "%Y-%m-%d")
 
+POCs <- readRDS('appData/Oregon_POCs.rds')
 # Create summary table with statistics by analyte and year
 
 # AllData_Sum <- AllData_NoVoid %>% 
