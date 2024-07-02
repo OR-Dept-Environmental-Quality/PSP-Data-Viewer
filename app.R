@@ -3,15 +3,15 @@
 # Written by Colin Donald
 # setwd("//deqhq1/PSP/Rscripts/Repositories/PSP-Data-Viewer")
 # rsconnect::deployApp(appId = 63, account = "l_cdonald", upload = T, launch.browser = T)
+# 
 
 TS <- Sys.time()
 
 # Packages ----------------------------------------------------------------
 
+library(shiny)
 library(plyr)
 library(dplyr)
-library(data.table)
-library(shiny)
 library(shinyjs)
 library(ggplot2)
 library(plotly)
@@ -29,6 +29,7 @@ library(htmltools)
 library(htmlwidgets)
 library(shinyalert)
 library(compiler)
+library(data.table)
 options(scipen=999)
 # source("appData/Credentials.R")
 
@@ -365,7 +366,41 @@ fluidPage(
                       )
              ),
              
-             #### Navbar Panel 2 - UI for reference data to help users navigate the application ####
+             #### Navbar Panel 2 - Methods UI ####
+             tabPanel(icon=icon("microscope"), "Methods", value = "f",
+                      mainPanel(width = 20,
+                                "Water quality samples collected as part of the PSP program are generally obtained through the use of grab sample techniques. 
+                                Grab sampling is a sampling technique in which a single sample or measurement is taken at a specific time. Grab samples 
+                                provide the ability to obtain an immediate sample (as opposed to collecting samples using automated samplers or passive 
+                                samples such as polar organic chemical integrative samplers (POCIS), or semipermeable membrane devices (SPMD)) and are 
+                                preferred for the constituents of concern in the PSP program because set-up and equipment costs are low and sample scheduling 
+                                can be easily modified to account for pesticide application timing and/or weather events.",
+                                HTML("<br>"),HTML("<br>"),
+                                "The use of grab samples for water quality collection does have several disadvantages over more extensive and expensive 
+                                monitoring techniques. A grab sample takes a snapshot of the characteristics of the water at a specific location and moment 
+                                in time, and it may not be completely representative of the entire flow of the waterbody being sampled. Because it represents 
+                                a snapshot in time, results can be influenced by stream flow, weather conditions leading up to and following pesticide 
+                                application and, timing of the collection in relation to pesticide applications. These disadvantages can contribute to 
+                                uncertainties in applying water quality monitoring results acquired via grab samples to characterizations of land use 
+                                influences or the impacts of education and outreach on pesticide water quality.",
+                                HTML("<br>"),HTML("<br>"),
+                                "Strong collaboration, coordination, cooperation, and communication between DEQ and ODA, the local PSP leads, and the 
+                                pesticide user community can reduce uncertainties regarding pesticide contributions to surface waters from upstream land uses. 
+                                Because pesticide occurrence in streams is episodic, the PSP sampling approach requires DEQ, ODA, and local partners know the 
+                                types of pesticides being used, the geographic area of pesticide applications, and the timing of pesticide applications in the 
+                                PSP. Without this information, there is a high likelihood of nondetects, due not to the PSP Programâ€™s success in reducing 
+                                pesticides from reaching streams, but more likely due to inadequacy of the monitoring study design.",
+                                HTML("<br>"),HTML("<br>"),
+                                "To further reduce uncertainties associated with sample collection techniques DEQ provides technical assistance in proper field 
+                                monitoring techniques to local partners. DEQ conducts annual training and audits of sampling staff to ensure that data are 
+                                collected per established protocols necessary to maintain high data quality and allow for data comparison. Results from the 
+                                2019 field audit indicate that protocols are being followed to ensure that data quality is being protected at the point of 
+                                sample collection within the individual PSP areas. Due to COVID concerns, no field audits were conducted for 2020 or 2021.
+                                "
+                      )
+             ),
+             
+             #### Navbar Panel 3 - UI for reference data to help users navigate the application ####
              
              tabPanel(icon=icon("book"), HTML("Reference</a></li><li><a href=\"PSPAppTutorial.html\" target=\"_blank\">User Guide"), value = "e",
                       mainPanel(width = 20,
@@ -401,13 +436,13 @@ fluidPage(
 }
 
 #### ui input ####
-ui <- tagList(useShinyjs(),
-              # useShinyalert(),
-              uiOutput("page"),
-              uiOutput("modals"),
-              # uiOutput("color"),
-              uiOutput("panels"),
-              uiOutput("popup"))
+ui <- tagList(
+  useShinyjs(),
+  uiOutput(outputId = "page"),
+  uiOutput(outputId = "modals"),
+  uiOutput(outputId = "panels"),
+  uiOutput(outputId = "popup")
+)
               
 #### Where all of the computation happens (in relation to inputs) ####
 
@@ -417,18 +452,27 @@ server <- function(input, output, session) {
   output$page <- renderUI(ui2())
   
   # Popup to suggest user guide and references    
-  delay(5000, {
+  delay(1000, {
     showModal(
-      modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! If you are new to this tool, check out the User Guide by clicking on the ",
+      modalDialog(strong("Welcome to the Pesticide Stewardship Partnerships Data Viewer! This application may take a minute to load. If you are new to this tool, check out the User Guide by clicking on the ",
                          img(src = "UserGuide.PNG"), " link in the Navigation Bar at the top of the window.",
                          br(),br(),
                          "You can find definitions, analyte descriptions and more in the ", img(src = "References.PNG"), " tab.",
                          br(),br(),
-                         em(HTML("<center>"),"Please Note",HTML("<br>"),"This data viewer was developed to support Oregon's Pesticide Stewardship Partnership program,
-                          a voluntary program aimed to identify water quality issues related to pesticides, share monitoring results,
-                          implement solutions, and measure success. This data viewer provides access to information supporting this program and
-                          is not intended to be a comprehensive source of information about pesticide distribution in state waters.",HTML("</center>"))),
-                  footer = modalButton("Dismiss"), fade = TRUE, easyClose = TRUE)
+                         em(HTML("<center><b>"),"Please Note", 
+                            HTML("</b><br>"), 
+                            "This data viewer was developed to support Oregon's Pesticide Stewardship Partnership (PSP) 
+                            program to provide relevant data to the PSP Partners and the public to advance the goals for pesticide stewardship statewide. The PSP is 
+                            a voluntary program that relies on local partnerships to monitor pesticide levels in waterways and enact solutions to protect water 
+                            quality. Participation in the PSP program is an alternative to a regulatory approach.", 
+                            HTML("<br>"), HTML("<br>"),
+                            "This application provides access to data supporting the PSP program and is not intended to be a comprehensive source of information 
+                            about water quality data of state waters. Local partners use PSP monitoring data to identify potential sources of pesticides, target 
+                            stewardship education and technical assistance, and track progress towards the reduction or elimination of pesticide concentrations in 
+                            rivers and streams. For additional information, click on the â€œMethodsâ€ tab at the top of the page.",
+                            HTML("</center>"))
+      ),
+      footer = modalButton("Dismiss"), fade = TRUE, easyClose = TRUE)
     )
   })
   
@@ -461,13 +505,13 @@ server <- function(input, output, session) {
   
   output$pspMap <- renderLeaflet({
     req(bsnSelect())
-    leaflet() %>% 
+    maploc <- leaflet() %>% 
       addProviderTiles(providers$Stamen.TonerLite) %>%
       addPolygons(data=bsnSelect(),
-                  label = bsnSelect()@data$PSP_Name,
+                  label = bsnSelect()$PSP_Name,
                   stroke = TRUE,
                   weight = 1, fillOpacity = 0.4, smoothFactor = 0.5,
-                  fillColor = topo.colors(length(bsnSelect()@data$PSP_Name), alpha = NULL),
+                  fillColor = topo.colors(length(bsnSelect()$PSP_Name), alpha = NULL),
                   highlight = highlightOptions(
                     weight = 5,
                     color = "#666",
@@ -490,7 +534,7 @@ server <- function(input, output, session) {
     if(input$Basin == "All"){BasinNames} else {input$Basin}
   })
   
-  bsnSelect <- reactive({bsns[bsns@data$PSP_Name %in% Basin1(),]})
+  bsnSelect <- reactive({bsns[bsns$PSP_Name %in% Basin1(),]})
   
   StationIDs <- reactive(unique(filter(AllData_NoVoid, 
                                        Project %in% Basin1()
@@ -498,8 +542,8 @@ server <- function(input, output, session) {
                                        # Sampling_Date >= input$date_range[1],
                                        # Sampling_Date <= input$date_range[2]
                                        )$Station_Description))
-  stnSelect <- reactive({stns[stns@data$StationDes %in% StationIDs(),]})
-  wsSelect <- reactive({stn_ws[stn_ws$Station %in% stns[stns@data$StationDes %in% StationIDs(),]@data$MLocID,]})
+  stnSelect <- reactive({stns[stns$StationDes %in% StationIDs(),]})
+  wsSelect <- reactive({stn_ws[stn_ws$Station %in% stns[stns$StationDes %in% StationIDs(),]$MLocID,]})
   
   Pollutants <- reactive(unique(filter(AllData_NoVoid, 
                                        Project %in% Basin1(),
@@ -518,6 +562,7 @@ server <- function(input, output, session) {
   
   data_filtered <- reactive({
     req(input$date_range)
+    req(input$Basin)
     AllData_NoVoid %>% 
       dplyr::filter(Sampling_Date >= input$date_range[1],
                     Sampling_Date <= input$date_range[2],
@@ -578,16 +623,17 @@ server <- function(input, output, session) {
     updateSelectInput(session, inputId = 'Analyte', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
     updateSelectInput(session, inputId = 'Analyte2', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
     updateSelectInput(session, inputId = 'Analyte4', label = 'Analyte', choices = c(POCs, sort(Pollutants())))
+    print(input$Basin)
   }), ignoreInit = TRUE)
   
-  observeEvent(input$date_range, ({
-    # updateSelectInput(session, inputId = 'Station', label = "StationID", choices = c('All', sort(StationIDs())))
-    # updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
-    # updateSelectInput(session, inputId = 'custom_station', label = 'Station ID', choices = c('All', sort(StationIDs())))
-    # updateSelectInput(session, inputId = 'Analyte', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
-    # updateSelectInput(session, inputId = 'Analyte2', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
-    # updateSelectInput(session, inputId = 'Analyte4', label = 'Analyte', choices = c(POCs, sort(Pollutants())))
-    }), ignoreInit = TRUE)
+  # observeEvent(input$date_range, ({
+  #   # updateSelectInput(session, inputId = 'Station', label = "StationID", choices = c('All', sort(StationIDs())))
+  #   # updateSelectInput(session, inputId = 'Station2', label = 'Station ID', choices = c('All', sort(StationIDs())))
+  #   # updateSelectInput(session, inputId = 'custom_station', label = 'Station ID', choices = c('All', sort(StationIDs())))
+  #   # updateSelectInput(session, inputId = 'Analyte', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+  #   # updateSelectInput(session, inputId = 'Analyte2', label = 'Analyte', choices = c('All', POCs, sort(Pollutants())))
+  #   # updateSelectInput(session, inputId = 'Analyte4', label = 'Analyte', choices = c(POCs, sort(Pollutants())))
+  #   }), ignoreInit = TRUE)
   
   #### All Analytes tab ####
   
@@ -954,7 +1000,8 @@ server <- function(input, output, session) {
                                        Sampling_Date >= input$date_range[1],
                                        Sampling_Date <= input$date_range[2]
   )$Station_Description))
-  stnSelect_map <- reactive({stns[stns@data$StationDes %in% StationIDs_map(),]})
+  stnSelect_map <- reactive({stns[stns$StationDes %in% StationIDs_map(),]})
+  wsSelect <- reactive({stn_ws[stn_ws$Station %in% stns[stns$StationDes %in% StationIDs_map(),]$MLocID,]})
   
   # Create detection map using function from BasinMapForApp.R
   
@@ -976,8 +1023,8 @@ server <- function(input, output, session) {
                         # dashArray = "",
                         fillOpacity = 0.7,
                         bringToFront = FALSE),
-                      layerId = bsnSelect()@data$PSP_Name,
-                      label = bsnSelect()@data$PSP_Name,
+                      layerId = bsnSelect()$PSP_Name,
+                      label = bsnSelect()$PSP_Name,
                       labelOptions = labelOptions(
                         style = list("font-weight" = "normal", padding = "3px 8px"),
                         textsize = "15px",

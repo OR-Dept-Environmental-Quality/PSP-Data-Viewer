@@ -1,8 +1,8 @@
 library(leaflet)
 library(leaflet.extras)
 # library(jpeg)
-library(sp)
-library(rgdal)
+# library(sp)
+# library(rgdal)
 library(sf)
 library(leafpop)
 library(ggplot2)
@@ -21,12 +21,16 @@ LongLatToUTM<-function(x,y){
 
 # setwd('//deqhq1/psp/Rscripts/Repositories/PSP-Data-Viewer/')
 
-bsns <- readOGR(dsn = 'appData/PSP_Locations',
-                layer = 'All_PSPBasins_01242023',
-                verbose = FALSE)
-stns <- readOGR(dsn = 'appData/PSP_Locations',
-                layer = 'XYPSP_stations_AWQMS',
-                verbose = FALSE)
+# bsns <- readOGR(dsn = 'appData/PSP_Locations',
+#                 layer = 'All_PSPBasins_01242023',
+#                 verbose = FALSE)
+# stns <- readOGR(dsn = 'appData/PSP_Locations',
+#                 layer = 'XYPSP_stations_AWQMS',
+#                 verbose = FALSE)
+bsns <- st_read(dsn = 'appData/PSP_Locations',
+                layer = 'All_PSPBasins_01242023')
+stns <- st_read(dsn = 'appData/PSP_Locations',
+                layer = 'XYPSP_stations_AWQMS')
 # stn_ws <- readOGR(dsn = 'appData/PSP_Locations',
 #                 layer = 'Station_Watersheds_nhd',
 #                 verbose = FALSE,
@@ -38,6 +42,7 @@ stn_ws <- sf::st_read(dsn = 'appData/PSP_Locations',
 stn_ws <- dplyr::rename(stn_ws, Station = Name)
 
 stn_ws <- sf::st_transform(stn_ws, crs = 4326)
+bsns <- sf::st_transform(bsns, crs = 4326)
 
 stn_landuse <- read.csv("appData/station_ws_landuse.csv", stringsAsFactors=FALSE)
 
@@ -85,19 +90,19 @@ landuse_plot <- function(stn){
 #      plotly::add_pie(values = ~Percent, labels = ~`Land Use`, textinfo = 'label+percent', showlegend = FALSE)
 # stn_landuse_plots <- lapply(stn_ws@data$Station, landuse_plot)
 
-bsns@data$PSP_Name <- as.character(bsns@data$PSP_Name)
-bsns@data[grep("Hood", bsns@data$PSP_Name),]$PSP_Name <- "Hood River"
-bsns@data[grep("Walla Walla", bsns@data$PSP_Name),]$PSP_Name <- "Walla Walla"
-bsns@data[grep("Middle Rogue", bsns@data$PSP_Name),]$PSP_Name <- "Middle Rogue"
-bsns@data[grep("Clackamas", bsns@data$PSP_Name),]$PSP_Name <- "Clackamas"
-bsns@data[grep("Pudding", bsns@data$PSP_Name),]$PSP_Name <- "Pudding"
-bsns@data[grep("Amazon", bsns@data$PSP_Name),]$PSP_Name <- "Amazon"
-bsns@data[grep("South Yamhill", bsns@data$PSP_Name),]$PSP_Name <- "South Yamhill"
-bsns@data[grep("Wasco", bsns@data$PSP_Name),]$PSP_Name <- "Wasco"
-bsns@data[grep("South Umpqua", bsns@data$PSP_Name),]$PSP_Name <- "South Umpqua"
-bsns@data[grep("Middle Deschutes", bsns@data$PSP_Name),]$PSP_Name <- "Middle Deschutes"
-bsns@data[grep("South Coast", bsns@data$PSP_Name),]$PSP_Name <- "South Coast"
-unique(bsns@data$PSP_Name)
+bsns$PSP_Name <- as.character(bsns$PSP_Name)
+bsns[grep("Hood", bsns$PSP_Name),]$PSP_Name <- "Hood River"
+bsns[grep("Walla Walla", bsns$PSP_Name),]$PSP_Name <- "Walla Walla"
+bsns[grep("Middle Rogue", bsns$PSP_Name),]$PSP_Name <- "Middle Rogue"
+bsns[grep("Clackamas", bsns$PSP_Name),]$PSP_Name <- "Clackamas"
+bsns[grep("Pudding", bsns$PSP_Name),]$PSP_Name <- "Pudding"
+bsns[grep("Amazon", bsns$PSP_Name),]$PSP_Name <- "Amazon"
+bsns[grep("South Yamhill", bsns$PSP_Name),]$PSP_Name <- "South Yamhill"
+bsns[grep("Wasco", bsns$PSP_Name),]$PSP_Name <- "Wasco"
+bsns[grep("South Umpqua", bsns$PSP_Name),]$PSP_Name <- "South Umpqua"
+bsns[grep("Middle Deschutes", bsns$PSP_Name),]$PSP_Name <- "Middle Deschutes"
+bsns[grep("South Coast", bsns$PSP_Name),]$PSP_Name <- "South Coast"
+unique(bsns$PSP_Name)
 
 
 detectColor <- colorBin(palette = c('#a0fff8', '#44a1ff', '#ffb744', '#ff311e'),
@@ -174,9 +179,9 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData, ws) {
                # clusterOptions = markerClusterOptions(),
                options = markerOptions(riseOnHover = TRUE,
                                        keyboard = TRUE),
-               label = stnData@data$StationDes,
-               layerId = stnData@data$StationDes,
-               popup = paste0("<b>",stnData@data$MLocID, " ", stnData@data$StationDes, "</b><br>")
+               label = stnData$StationDes,
+               layerId = stnData$StationDes,
+               popup = paste0("<b>",stnData$MLocID, " ", stnData$StationDes, "</b><br>")
     ) %>%
     addPolygons(data = bsnData,
                 group = 'Basins',
@@ -192,8 +197,8 @@ detectMap <- cmpfun(function(inputData, bsnData, stnData, ws) {
                   # dashArray = "",
                   fillOpacity = 0.3,
                   bringToFront = FALSE),
-                layerId = bsnData@data$PSP_Name,
-                label = bsnData@data$PSP_Name,
+                layerId = bsnData$PSP_Name,
+                label = bsnData$PSP_Name,
                 labelOptions = labelOptions(
                   style = list("font-weight" = "normal", padding = "3px 8px"),
                   textsize = "15px",
